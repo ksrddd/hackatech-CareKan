@@ -49,8 +49,15 @@ export function Login() {
   return (
     <>
       <div className="max-w-[460px] mx-auto my-12 bg-white border border-gov-border p-8">
-        <h1 className="text-2xl font-bold mb-1">เข้าสู่ระบบ</h1>
-        <p className="text-gray-600 mb-6 text-[0.95rem]">
+        <img
+          src="/carekan-logo.jpg"
+          alt="CareKan — แคร์กัน"
+          width={120}
+          height={64}
+          className="h-16 w-auto mx-auto mb-4 object-contain"
+        />
+        <h1 className="text-2xl font-bold mb-1 text-center">เข้าสู่ระบบ</h1>
+        <p className="text-gray-600 mb-6 text-[0.95rem] text-center">
           ใช้เลขบัตรประจำตัวประชาชน 13 หลัก เพื่อตรวจสอบหรือจองคิวโรงพยาบาลรัฐในสังกัด กทม.
         </p>
 

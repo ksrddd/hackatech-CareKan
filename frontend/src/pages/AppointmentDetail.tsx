@@ -56,13 +56,22 @@ export function AppointmentDetail() {
         <div className="space-y-5">
           <section className="bg-white border-2 border-gov-ink p-5">
             <div className="flex justify-between items-start gap-4 flex-wrap pb-3 mb-4 border-b border-gov-border">
-              <div>
-                <h2 className="text-lg font-semibold mb-1">
-                  ใบนัดหมายโรงพยาบาล
-                </h2>
-                <p className="text-sm text-gray-500 font-mono">
-                  เลขที่นัด {appt.bookingRef}
-                </p>
+              <div className="flex items-center gap-3">
+                <img
+                  src="/carekan-logo.jpg"
+                  alt="CareKan"
+                  width={96}
+                  height={48}
+                  className="h-12 w-auto object-contain"
+                />
+                <div>
+                  <h2 className="text-lg font-semibold mb-1">
+                    ใบนัดหมายโรงพยาบาล
+                  </h2>
+                  <p className="text-sm text-gray-500 font-mono">
+                    เลขที่นัด {appt.bookingRef}
+                  </p>
+                </div>
               </div>
               <QueueStatusBadge status={appt.status} />
             </div>

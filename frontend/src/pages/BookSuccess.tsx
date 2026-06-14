@@ -57,6 +57,20 @@ export function BookSuccess() {
       </section>
 
       <section className="bg-white border-2 border-gov-ink p-5 mb-5">
+        <div className="flex items-center justify-between gap-3 pb-3 mb-4 border-b border-gov-border">
+          <img
+            src="/carekan-logo.jpg"
+            alt="CareKan"
+            width={100}
+            height={48}
+            className="h-12 w-auto object-contain"
+          />
+          <span className="text-xs text-gray-500 text-right">
+            ใบนัดหมายโรงพยาบาล
+            <br />
+            สำนักการแพทย์ กรุงเทพมหานคร
+          </span>
+        </div>
         <div className="grid sm:grid-cols-[180px_1fr] gap-5 items-center">
           <QrStub />
           <dl className="text-[0.95rem] grid grid-cols-[110px_1fr] gap-y-2">
