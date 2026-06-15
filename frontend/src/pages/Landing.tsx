@@ -21,12 +21,7 @@ export function Landing() {
               ไม่ต้องไปยืนรอตั้งแต่ตี 5
             </p>
             <div className="flex flex-wrap gap-3">
-              <Link
-                to="/register"
-                className="inline-block px-5 py-3 font-semibold text-white bg-gov-primary border-2 border-gov-primary-dark hover:bg-gov-primary-dark"
-              >
-                เริ่มใช้งานฟรี
-              </Link>
+
               <Link
                 to="/search"
                 className="inline-block px-5 py-3 font-semibold text-gov-primary bg-white border-2 border-gov-primary hover:bg-gov-primary-tint"
