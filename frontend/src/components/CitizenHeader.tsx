@@ -30,6 +30,9 @@ export function CitizenHeader() {
               <NavLink to="/book" className={navClass}>
                 จองคิวใหม่
               </NavLink>
+              <NavLink to="/user-flow" className={navClass}>
+                เส้นทางการใช้งาน
+              </NavLink>
             </nav>
             <div className="text-sm bg-gray-100 border border-gov-border px-3 py-1 flex items-center gap-2">
               <strong className="font-semibold">{user?.fullName}</strong>
@@ -53,6 +56,9 @@ export function CitizenHeader() {
               </NavLink>
               <NavLink to="/search" className={navClass}>
                 ค้นหาโรงพยาบาล
+              </NavLink>
+              <NavLink to="/user-flow" className={navClass}>
+                เส้นทางการใช้งาน
               </NavLink>
             </nav>
             <div className="flex gap-2">

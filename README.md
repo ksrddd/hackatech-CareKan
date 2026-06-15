@@ -128,6 +128,7 @@ npm run dev
 12. **`/admin`** → เห็น KPI 6 ตัว + กราฟ + รายการล่าสุด + ห้องตรวจ + ยังไม่ check-in
 13. **`/admin/queue`** → กด **"เรียกคิวถัดไป"** หรือกด **"เรียก"** บน row → สถานะอัปเดต
 14. (Optional) เปิด tab ใหม่ login citizen — เห็นสถานะคิวขยับขึ้น (cross-tab sync ผ่าน localStorage)
+15. ดูภาพรวมระบบที่ **`/user-flow`** — มี SVG diagram + route map + อธิบาย data sync ระหว่าง citizen/admin
 
 ---
 

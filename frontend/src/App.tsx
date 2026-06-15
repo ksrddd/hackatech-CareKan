@@ -15,6 +15,7 @@ import { Landing } from './pages/Landing';
 import { Login } from './pages/Login';
 import { MyAppointments } from './pages/MyAppointments';
 import { Register } from './pages/Register';
+import { UserFlow } from './pages/UserFlow';
 
 // Code-split admin bundle — citizen users never download it.
 // Saves ~25 KB on the initial citizen page load and keeps the
@@ -66,6 +67,7 @@ export function App() {
                 <Route path="register" element={<Register />} />
                 <Route path="search" element={<HospitalSearch />} />
                 <Route path="hospitals/:id" element={<HospitalDetail />} />
+                <Route path="user-flow" element={<UserFlow />} />
 
                 <Route element={<ProtectedRoute role="citizen" />}>
                   <Route path="my-appointments" element={<MyAppointments />} />

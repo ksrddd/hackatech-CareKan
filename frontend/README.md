@@ -66,6 +66,7 @@ src/
 | `/register` | สมัครใช้งาน (4 ขั้นตอน) | ❌ |
 | `/search` | ค้นหาโรงพยาบาล | ❌ |
 | `/hospitals/:id` | รายละเอียดโรงพยาบาล | ❌ |
+| `/user-flow` | แผนภาพ user flow (SVG) + route map + cross-side sync | ❌ |
 | `/my-appointments` | นัดหมายของฉัน | citizen |
 | `/appointments/:id` | รายละเอียดนัด + queue สดทุก 5s | citizen |
 | `/book?hospital=...` | จองคิว 3 ขั้นตอน | citizen |

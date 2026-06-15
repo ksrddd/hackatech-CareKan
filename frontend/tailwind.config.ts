@@ -22,7 +22,7 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ['Sarabun', 'Noto Sans Thai', 'system-ui', 'sans-serif'],
+        sans: ['LINE Seed Sans TH', 'Sarabun', 'Noto Sans Thai', 'system-ui', 'sans-serif'],
       },
     },
   },
