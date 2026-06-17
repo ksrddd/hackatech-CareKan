@@ -1,0 +1,158 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  citizen
+  admin
+}
+
+enum InsuranceRight {
+  uc
+  sso
+  csmbs
+  self_pay
+}
+
+enum Sex {
+  male
+  female
+  unspecified
+}
+
+enum ServiceType {
+  opd
+  new_patient
+  checkup
+  follow_up
+  lab
+  medication
+  elderly
+}
+
+enum Zone {
+  inner
+  north
+  south
+  east
+  thon_north
+  thon_south
+}
+
+enum ClinicCode {
+  med
+  surg
+  ped
+  ob
+  ortho
+  eye
+  ent
+  dent
+  skin
+  ncd
+  psych
+}
+
+enum AppointmentStatus {
+  pending
+  confirmed
+  checked_in
+  in_progress
+  completed
+  cancelled
+  no_show
+}
+
+model User {
+  id               String         @id @default(cuid())
+  nationalId       String         @unique @map("national_id")
+  username         String         @map("username")
+  firstName        String         @map("first_name")
+  lastName         String         @map("last_name")
+  phoneNumber      String         @map("phone_number")
+  email            String         @unique
+  profileImage     String?        @map("profile_image")
+  password         String
+  address          String?
+  insuranceId      String?        @map("insurance_id")
+  insuranceRight   InsuranceRight @map("insurance_right")
+  role             Role           @default(citizen)
+  birthDate        String         @map("birth_date")
+  sex              Sex            @default(unspecified)
+  primaryHospitalId String?       @map("primary_hospital_id")
+  hospitalPatientId String?       @map("hospital_patient_id")
+  consentAt        DateTime?      @map("consent_at")
+  createdAt        DateTime       @default(now()) @map("created_at")
+
+  reserves Reserve[]
+
+  @@map("users")
+}
+
+model Hospital {
+  id             String           @id
+  code           String           @unique
+  name           String           @map("hospital_name")
+  shortName      String           @map("short_name")
+  address        String
+  district       String
+  zone           Zone
+  phone          String
+  openingHours   String           @map("opening_hours")
+  description    String
+  services       ServiceType[]
+  rightsAccepted InsuranceRight[] @map("rights_accepted")
+  mockDistanceKm Float            @map("mock_distance_km")
+
+  schedules Schedule[]
+  reserves  Reserve[]
+
+  @@map("hospitals")
+}
+
+model Schedule {
+  id            String     @id @default(cuid())
+  hospitalId    String     @map("hospital_id")
+  clinic        ClinicCode
+  date          String // 'YYYY-MM-DD'
+  startTime     String     @map("start_time") // 'HH:MM'
+  endTime       String     @map("end_time")
+  maxCapacity   Int        @map("max_capacity")
+  currentBooked Int        @default(0) @map("current_booked")
+  isFull        Boolean    @default(false) @map("is_full")
+
+  hospital Hospital  @relation(fields: [hospitalId], references: [id])
+  reserves Reserve[]
+
+  @@unique([hospitalId, clinic, date, startTime], name: "slot_identity")
+  @@index([hospitalId, clinic, date])
+  @@map("schedules")
+}
+
+model Reserve {
+  id              String            @id @default(cuid())
+  bookingCode     String            @unique @map("booking_code")
+  userId          String            @map("user_id")
+  hospitalId      String            @map("hospital_id")
+  scheduleId      String            @map("schedule_id")
+  purpose         ServiceType
+  reason          String            @default("")
+  status          AppointmentStatus @default(confirmed)
+  queueNumber     String            @map("queue_number")
+  currentStationId Int?             @map("current_station_id")
+  queueUpdatedAt  DateTime?         @map("queue_updated_at")
+  checkedInAt     DateTime?         @map("checked_in_at")
+  createdAt       DateTime          @default(now()) @map("created_at")
+
+  user     User     @relation(fields: [userId], references: [id])
+  hospital Hospital @relation(fields: [hospitalId], references: [id])
+  schedule Schedule @relation(fields: [scheduleId], references: [id])
+
+  @@index([hospitalId, scheduleId])
+  @@map("reserves")
+}
