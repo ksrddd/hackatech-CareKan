@@ -7,8 +7,12 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ role }: ProtectedRouteProps) {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
+
+  if (isLoading) {
+    return <div className="p-8 text-center">กำลังโหลด…</div>;
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;

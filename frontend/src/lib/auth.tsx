@@ -1,99 +1,86 @@
 import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
+  createContext, useCallback, useContext, useEffect, useMemo, useState,
   type ReactNode,
 } from 'react';
-import { ApiError } from '@/shared/api/client';
-import { MOCK_USERS } from './mockData';
+import { api } from '@/shared/api/endpoints';
+import { setAuthToken } from '@/shared/api/client';
+import type { RegisterRequest } from '../../../shared/api';
 import type { Role, User } from './types';
+
+const TOKEN_KEY = 'carekan.auth.token';
 
 interface AuthContextValue {
   user: User | null;
   isAuthenticated: boolean;
-  /** Mock implementation today; will call POST /auth/login when backend lands.
-   *  Throws ApiError on failure so callers can use useRequest naturally. */
+  isLoading: boolean;
   login: (nationalId: string, password: string) => Promise<User>;
+  register: (input: RegisterRequest) => Promise<User>;
   logout: () => void;
   hasRole: (role: Role) => boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const STORAGE_KEY = 'carekan.auth.userId';
+function readToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return window.localStorage.getItem(TOKEN_KEY);
+}
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function storeToken(token: string | null): void {
+  if (typeof window === 'undefined') return;
+  if (token) window.localStorage.setItem(TOKEN_KEY, token);
+  else window.localStorage.removeItem(TOKEN_KEY);
+  setAuthToken(token);
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
-    if (typeof window === 'undefined') return null;
-    const id = window.localStorage.getItem(STORAGE_KEY);
-    if (!id) return null;
-    return MOCK_USERS.find((u) => u.id === id) ?? null;
-  });
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(() => readToken() !== null);
 
+  // Re-hydrate session from a stored token on first mount.
   useEffect(() => {
-    if (user) {
-      window.localStorage.setItem(STORAGE_KEY, user.id);
-    } else {
-      window.localStorage.removeItem(STORAGE_KEY);
-    }
-  }, [user]);
+    const token = readToken();
+    if (!token) return;
+    setAuthToken(token);
+    let cancelled = false;
+    api.me()
+      .then((res) => { if (!cancelled) setUser(res.user); })
+      .catch(() => { if (!cancelled) storeToken(null); })
+      .finally(() => { if (!cancelled) setIsLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
 
-  const login = useCallback<AuthContextValue['login']>(
-    async (nationalId, password) => {
-      await sleep(120);
-      if (!/^\d{13}$/.test(nationalId)) {
-        throw new ApiError(
-          'เลขบัตรประจำตัวประชาชนต้องเป็นตัวเลข 13 หลัก',
-          400,
-        );
-      }
-      if (password.length < 4) {
-        throw new ApiError('รหัสผ่านต้องมีอย่างน้อย 4 ตัวอักษร', 400);
-      }
-      const found = MOCK_USERS.find((u) => u.nationalId === nationalId);
-      if (!found) {
-        throw new ApiError(
-          'ไม่พบบัญชีนี้ในระบบ — ลองใช้บัญชี demo: 1234567890123',
-          401,
-        );
-      }
-      setUser(found);
-      return found;
-    },
-    [],
-  );
+  const login = useCallback<AuthContextValue['login']>(async (nationalId, password) => {
+    const res = await api.login({ nationalId, password });
+    storeToken(res.token);
+    setUser(res.user);
+    return res.user;
+  }, []);
+
+  const register = useCallback<AuthContextValue['register']>(async (input) => {
+    const res = await api.register(input);
+    storeToken(res.token);
+    setUser(res.user);
+    return res.user;
+  }, []);
 
   const logout = useCallback(() => {
+    void api.logout().catch(() => undefined);
+    storeToken(null);
     setUser(null);
   }, []);
 
   const hasRole = useCallback((role: Role) => user?.role === role, [user]);
 
-  const value = useMemo<AuthContextValue>(
-    () => ({
-      user,
-      isAuthenticated: user !== null,
-      login,
-      logout,
-      hasRole,
-    }),
-    [user, login, logout, hasRole],
-  );
+  const value = useMemo<AuthContextValue>(() => ({
+    user, isAuthenticated: user !== null, isLoading, login, register, logout, hasRole,
+  }), [user, isLoading, login, register, logout, hasRole]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
-  if (!ctx) {
-    throw new Error('useAuth must be used within AuthProvider');
-  }
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
   return ctx;
 }
