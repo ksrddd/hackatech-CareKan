@@ -30,6 +30,7 @@ export interface LoginRequest {
 
 export interface LoginResponse {
   user: User;
+  token: string;
 }
 
 export interface RegisterRequest {
