@@ -1,0 +1,210 @@
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* LINE Seed Sans TH */
+@font-face {
+  font-family: 'LINE Seed Sans TH';
+  src: url('https://twsme-r2.tumwebsme.com/fonts/line_seed_th/LINESeedSansTH_W_Th.woff2')
+    format('woff2');
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'LINE Seed Sans TH';
+  src: url('https://twsme-r2.tumwebsme.com/fonts/line_seed_th/LINESeedSansTH_W_Rg.woff2')
+    format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'LINE Seed Sans TH';
+  src: url('https://twsme-r2.tumwebsme.com/fonts/line_seed_th/LINESeedSansTH_W_Bd.woff2')
+    format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'LINE Seed Sans TH';
+  src: url('https://twsme-r2.tumwebsme.com/fonts/line_seed_th/LINESeedSansTH_W_XBd.woff2')
+    format('woff2');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'LINE Seed Sans TH';
+  src: url('https://twsme-r2.tumwebsme.com/fonts/line_seed_th/LINESeedSansTH_W_He.woff2')
+    format('woff2');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer base {
+  html {
+    font-size: 17px;
+  }
+  body {
+    font-family: 'LINE Seed Sans TH', 'Sarabun', 'Noto Sans Thai', system-ui, sans-serif;
+    background-color: #f3f4f6;
+    color: #111827;
+  }
+}
+
+@layer components {
+  .skip-link {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    background: #14213d;
+    color: #fff;
+    padding: 0.5rem 1rem;
+    z-index: 100;
+  }
+  .skip-link:focus {
+    left: 0;
+  }
+
+  :where(a, button, input, select, textarea):focus-visible {
+    outline: 3px solid #f9c80e;
+    outline-offset: 2px;
+  }
+
+  .qr-block {
+    width: 160px;
+    height: 160px;
+    background:
+      repeating-linear-gradient(0deg, #1a1a1a 0 8px, transparent 8px 16px),
+      repeating-linear-gradient(90deg, #1a1a1a 0 8px, transparent 8px 16px);
+    border: 2px solid #1a1a1a;
+    position: relative;
+  }
+  .qr-block::before,
+  .qr-block::after,
+  .qr-corner {
+    content: '';
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    border: 6px solid #1a1a1a;
+    background: #fff;
+  }
+  .qr-block::before {
+    top: 6px;
+    left: 6px;
+  }
+  .qr-block::after {
+    top: 6px;
+    right: 6px;
+  }
+  .qr-corner {
+    bottom: 6px;
+    left: 6px;
+  }
+
+  .map-stub {
+    background: repeating-linear-gradient(45deg, #f1f1f1 0 20px, #fafafa 20px 40px);
+  }
+
+  .elderly-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid #c8ccd2;
+    background: #fff;
+    padding: 3px 8px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    color: #14213d;
+  }
+  .elderly-toggle [data-state] {
+    font-weight: 600;
+    padding: 0 6px;
+    color: #475569;
+  }
+  html.elderly .elderly-toggle [data-state-on] {
+    color: #1b4d8c;
+  }
+  html.elderly .elderly-toggle [data-state-off] {
+    display: none;
+  }
+  html:not(.elderly) .elderly-toggle [data-state-on] {
+    display: none;
+  }
+
+  .demo-pin {
+    background: #fff4d6;
+    color: #7a4a00;
+    border: 1px solid #f9c80e;
+    padding: 1px 6px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+}
+
+html.elderly {
+  font-size: 21px;
+}
+
+html.elderly :where(button, .btn, a.btn, input[type='submit']) {
+  min-height: 56px;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+html.elderly :where(input, select, textarea) {
+  min-height: 52px;
+  font-size: 1.05rem;
+}
+
+html.elderly :where(h1) {
+  font-size: 1.85rem;
+  line-height: 1.25;
+}
+html.elderly :where(h2) {
+  font-size: 1.45rem;
+  line-height: 1.3;
+}
+html.elderly :where(h3) {
+  font-size: 1.2rem;
+}
+html.elderly :where(p, li, label, span:not(.qr-corner)) {
+  line-height: 1.7;
+}
+
+html.elderly :where(a, button, input, select, textarea):focus-visible {
+  outline: 4px solid #f9c80e;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+@media print {
+  .no-print,
+  nav,
+  button {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+  }
+}
