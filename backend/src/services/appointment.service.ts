@@ -1,0 +1,84 @@
+import { Prisma } from '@prisma/client';
+import type { CreateAppointmentRequest } from '../../../shared/api';
+import type { ClinicCode } from '../../../shared/types';
+import { prisma } from '../prisma.js';
+import { ApiError } from '../errors.js';
+import { toAppointmentDto } from './mappers.js';
+
+const REF_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+function randomRef(): string {
+  let out = '';
+  for (let i = 0; i < 6; i++) out += REF_CHARS[Math.floor(Math.random() * REF_CHARS.length)];
+  return `CK-${out}`;
+}
+
+async function generateBookingCode(): Promise<string> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const code = randomRef();
+    const exists = await prisma.reserve.findUnique({ where: { bookingCode: code } });
+    if (!exists) return code;
+  }
+  throw new ApiError('ไม่สามารถสร้างรหัสการจองได้ ลองใหม่อีกครั้ง', 500, 'REF_COLLISION');
+}
+
+async function generateQueueNumber(hospitalId: string, clinic: ClinicCode, date: string): Promise<string> {
+  const count = await prisma.reserve.count({
+    where: { hospitalId, schedule: { clinic, date } },
+  });
+  return `A${String(count + 1).padStart(3, '0')}`;
+}
+
+const RESERVE_INCLUDE = {
+  schedule: true,
+  user: { select: { firstName: true, lastName: true } },
+} satisfies Prisma.ReserveInclude;
+
+export async function createAppointment(userId: string, input: CreateAppointmentRequest) {
+  const reserve = await prisma.$transaction(async (tx) => {
+    const slot = await tx.schedule.findUnique({ where: { id: input.slotId } });
+    if (!slot) throw new ApiError('ไม่พบช่วงเวลานี้', 404, 'SLOT_NOT_FOUND');
+    if (slot.hospitalId !== input.hospitalId || slot.clinic !== input.clinic) {
+      throw new ApiError('ช่วงเวลาไม่ตรงกับโรงพยาบาล/คลินิกที่เลือก', 400, 'SLOT_MISMATCH');
+    }
+    if (slot.isFull || slot.currentBooked >= slot.maxCapacity) {
+      throw new ApiError('ช่วงเวลานี้เต็มแล้ว', 409, 'SLOT_FULL');
+    }
+    const queueNumber = await generateQueueNumber(slot.hospitalId, slot.clinic as ClinicCode, slot.date);
+    const bookingCode = await generateBookingCode();
+    const willBeFull = slot.currentBooked + 1 >= slot.maxCapacity;
+    await tx.schedule.update({
+      where: { id: slot.id },
+      data: { currentBooked: { increment: 1 }, isFull: willBeFull },
+    });
+    return tx.reserve.create({
+      data: {
+        bookingCode, userId, hospitalId: slot.hospitalId, scheduleId: slot.id,
+        purpose: input.purpose, reason: input.reason, status: 'confirmed',
+        queueNumber, queueUpdatedAt: new Date(),
+      },
+      include: RESERVE_INCLUDE,
+    });
+  });
+  return toAppointmentDto(reserve);
+}
+
+export async function getMyAppointments(userId: string) {
+  const rows = await prisma.reserve.findMany({
+    where: { userId }, include: RESERVE_INCLUDE,
+    orderBy: [{ schedule: { date: 'asc' } }, { schedule: { startTime: 'asc' } }],
+  });
+  const today = new Date().toISOString().slice(0, 10);
+  const terminal = new Set(['completed', 'cancelled', 'no_show']);
+  const dtos = rows.map(toAppointmentDto);
+  return {
+    upcoming: dtos.filter((a) => !terminal.has(a.status) && a.date >= today),
+    history: dtos.filter((a) => terminal.has(a.status) || a.date < today),
+  };
+}
+
+export async function getAppointmentForOwner(id: string, userId: string) {
+  const r = await prisma.reserve.findUnique({ where: { id }, include: RESERVE_INCLUDE });
+  if (!r || r.userId !== userId) throw new ApiError('ไม่พบนัดหมาย', 404, 'NOT_FOUND');
+  return toAppointmentDto(r);
+}
