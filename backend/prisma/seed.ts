@@ -32,13 +32,10 @@ const TIME_RANGES: Array<[string, string]> = [
 const CLINICS: ClinicCode[] = ['med', 'surg', 'ped', 'ortho', 'eye', 'ent', 'dent'];
 
 // Exact 9-hospital array copied from hackatech-CareKan/frontend/src/lib/mockData.ts
-// Note: two pairs share the same code ('รก', 'รส') which conflicts with the @unique
-// constraint on Hospital.code — we suffix the id to disambiguate while preserving the
-// spirit of the original data.
 const HOSPITALS = [
   {
     id: 'klang',
-    code: 'รก-klang',
+    code: 'รก',
     name: 'รพ.กลาง',
     shortName: 'โรงพยาบาลกลาง',
     address: '514 ถ.หลวง เขตป้อมปราบศัตรูพ่าย กรุงเทพฯ 10100',
@@ -118,7 +115,7 @@ const HOSPITALS = [
   },
   {
     id: 'sukhumvit_elderly',
-    code: 'รส-sukhumvit_elderly',
+    code: 'รส',
     name: 'รพ.ผู้สูงอายุบางขุนเทียน',
     shortName: 'โรงพยาบาลผู้สูงอายุบางขุนเทียน',
     address: '109 ม.6 ถ.พระราม 2 เขตบางขุนเทียน กรุงเทพฯ 10150',
@@ -150,7 +147,7 @@ const HOSPITALS = [
   },
   {
     id: 'ladkrabang',
-    code: 'รก-ladkrabang',
+    code: 'รก',
     name: 'รพ.ลาดกระบัง',
     shortName: 'โรงพยาบาลลาดกระบังกรุงเทพมหานคร',
     address: '2 ม.4 ถ.ลาดกระบัง เขตลาดกระบัง กรุงเทพฯ 10520',
@@ -166,7 +163,7 @@ const HOSPITALS = [
   },
   {
     id: 'sirindhorn',
-    code: 'รส-sirindhorn',
+    code: 'รส',
     name: 'รพ.สิรินธร',
     shortName: 'โรงพยาบาลสิรินธร',
     address: '20 ซ.อ่อนนุช 90 เขตประเวศ กรุงเทพฯ 10250',

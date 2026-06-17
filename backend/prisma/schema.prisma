@@ -96,7 +96,7 @@ model User {
 
 model Hospital {
   id             String           @id
-  code           String           @unique
+  code           String
   name           String           @map("hospital_name")
   shortName      String           @map("short_name")
   address        String
