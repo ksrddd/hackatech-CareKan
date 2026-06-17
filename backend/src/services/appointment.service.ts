@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
-import type { CreateAppointmentRequest } from '../../../shared/api';
-import type { ClinicCode } from '../../../shared/types';
+import type { AdminQueueQuery, CreateAppointmentRequest } from '../../../shared/api';
+import type { AppointmentStatus, ClinicCode } from '../../../shared/types';
 import { prisma } from '../prisma.js';
 import { ApiError } from '../errors.js';
 import { toAppointmentDto } from './mappers.js';
@@ -81,4 +81,45 @@ export async function getAppointmentForOwner(id: string, userId: string) {
   const r = await prisma.reserve.findUnique({ where: { id }, include: RESERVE_INCLUDE });
   if (!r || r.userId !== userId) throw new ApiError('ไม่พบนัดหมาย', 404, 'NOT_FOUND');
   return toAppointmentDto(r);
+}
+
+export async function getAdminQueue(query: AdminQueueQuery) {
+  const rows = await prisma.reserve.findMany({
+    where: {
+      hospitalId: query.hospitalId,
+      schedule: { date: query.date, ...(query.clinic ? { clinic: query.clinic } : {}) },
+    },
+    include: RESERVE_INCLUDE,
+    orderBy: [{ schedule: { startTime: 'asc' } }, { queueNumber: 'asc' }],
+  });
+  return rows.map(toAppointmentDto);
+}
+
+const LEGAL_TRANSITIONS: Record<AppointmentStatus, AppointmentStatus[]> = {
+  pending: ['confirmed', 'cancelled'],
+  confirmed: ['checked_in', 'cancelled', 'no_show'],
+  checked_in: ['in_progress', 'no_show', 'cancelled'],
+  in_progress: ['completed', 'cancelled'],
+  completed: [],
+  cancelled: [],
+  no_show: [],
+};
+
+export async function updateStatus(id: string, next: AppointmentStatus) {
+  const current = await prisma.reserve.findUnique({ where: { id } });
+  if (!current) throw new ApiError('ไม่พบนัดหมาย', 404, 'NOT_FOUND');
+  const allowed = LEGAL_TRANSITIONS[current.status as AppointmentStatus];
+  if (!allowed.includes(next)) {
+    throw new ApiError(`เปลี่ยนสถานะจาก ${current.status} เป็น ${next} ไม่ได้`, 400, 'ILLEGAL_TRANSITION');
+  }
+  const updated = await prisma.reserve.update({
+    where: { id },
+    data: {
+      status: next,
+      queueUpdatedAt: new Date(),
+      ...(next === 'checked_in' && !current.checkedInAt ? { checkedInAt: new Date() } : {}),
+    },
+    include: RESERVE_INCLUDE,
+  });
+  return toAppointmentDto(updated);
 }
