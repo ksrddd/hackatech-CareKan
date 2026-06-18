@@ -13,7 +13,6 @@ import {
 } from '@/lib/format';
 import {
   clinicLabel,
-  insuranceRightLabel,
 } from '@/lib/types';
 
 export function MyAppointments() {
@@ -246,10 +245,6 @@ export function MyAppointments() {
               เลข ปชช. {maskNationalId(user.nationalId)}
             </p>
             <hr className="my-3 border-gov-border" />
-            <h3 className="text-sm uppercase tracking-wider text-gray-500 mb-2">
-              สิทธิการรักษา
-            </h3>
-            <p>{insuranceRightLabel[user.insuranceRight]}</p>
           </div>
         </aside>
       </div>

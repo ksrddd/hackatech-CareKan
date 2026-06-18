@@ -1,22 +1,16 @@
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
-import { useHospital } from '@/lib/hospitals';
 import {
   ageFromBirth,
   formatBuddhistDate,
   maskNationalId,
 } from '@/lib/format';
-import { insuranceRightLabel, type Sex } from '@/lib/types';
+import { type Sex } from '@/lib/types';
 
 const sexLabel: Record<Sex, string> = {
   male: 'ชาย',
   female: 'หญิง',
   unspecified: 'ไม่ระบุ',
-};
-
-const roleLabel: Record<'citizen' | 'admin', string> = {
-  citizen: 'ผู้ใช้ทั่วไป (Citizen)',
-  admin: 'เจ้าหน้าที่ (Admin)',
 };
 
 function Field({ label, value }: { label: string; value: string }) {
@@ -32,20 +26,11 @@ function Field({ label, value }: { label: string; value: string }) {
 
 export function Profile() {
   const { user, logout } = useAuth();
-  const { state: hospitalState } = useHospital(user?.primaryHospitalId ?? '');
 
   if (!user) return <Navigate to="/login" replace />;
 
   const age = ageFromBirth(user.birthDate);
   const initials = user.fullName.trim().charAt(0) || '?';
-  const primaryHospitalName =
-    user.primaryHospitalId == null
-      ? 'ยังไม่ได้เลือก'
-      : hospitalState.kind === 'success'
-        ? hospitalState.data.hospital.shortName
-        : hospitalState.kind === 'error'
-          ? user.primaryHospitalId
-          : 'กำลังโหลด…';
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6 pb-12">
@@ -65,11 +50,6 @@ export function Profile() {
             <h1 className="text-2xl font-bold mb-1">{user.fullName}</h1>
             <p className="text-sm text-gray-600">
               {maskNationalId(user.nationalId)} · อายุ {age} ปี
-            </p>
-            <p className="text-sm mt-2">
-              <span className="inline-block bg-gov-ok-bg text-gov-ok-ink px-2 py-0.5 border border-gov-ok-ink font-semibold text-xs">
-                {roleLabel[user.role]}
-              </span>
             </p>
           </div>
           <div className="text-right min-w-[180px]">
@@ -91,14 +71,8 @@ export function Profile() {
           </h2>
           <div className="grid sm:grid-cols-2 gap-3">
             <Field label="ชื่อ–นามสกุล" value={user.fullName} />
-            <Field
-              label="เลขประจำตัวประชาชน"
-              value={maskNationalId(user.nationalId)}
-            />
-            <Field
-              label="วัน เดือน ปีเกิด"
-              value={formatBuddhistDate(user.birthDate)}
-            />
+            <Field label="เลขประจำตัวประชาชน" value={maskNationalId(user.nationalId)} />
+            <Field label="วัน เดือน ปีเกิด" value={formatBuddhistDate(user.birthDate)} />
             <Field label="อายุ" value={`${age} ปี`} />
             <Field label="เพศ" value={sexLabel[user.sex]} />
           </div>
@@ -116,30 +90,10 @@ export function Profile() {
 
         <section className="bg-white border border-gov-border p-5">
           <h2 className="text-lg font-semibold pb-2 mb-3 border-b border-gov-border">
-            สิทธิการรักษาและโรงพยาบาลประจำ
-          </h2>
-          <div className="grid sm:grid-cols-1 gap-3">
-            <Field
-              label="สิทธิการรักษา"
-              value={insuranceRightLabel[user.insuranceRight]}
-            />
-            <Field label="โรงพยาบาลประจำ" value={primaryHospitalName} />
-            <Field
-              label="รหัสผู้ป่วยในโรงพยาบาล (HN)"
-              value={user.hospitalPatientId ?? 'ยังไม่ได้กำหนด'}
-            />
-          </div>
-        </section>
-
-        <section className="bg-white border border-gov-border p-5">
-          <h2 className="text-lg font-semibold pb-2 mb-3 border-b border-gov-border">
             ข้อมูลบัญชี
           </h2>
           <div className="grid sm:grid-cols-1 gap-3">
-            <Field
-              label="สมัครเมื่อ"
-              value={formatBuddhistDate(user.createdAt)}
-            />
+            <Field label="สมัครเมื่อ" value={formatBuddhistDate(user.createdAt)} />
             <Field
               label="ให้ความยินยอม PDPA"
               value={
@@ -150,7 +104,7 @@ export function Profile() {
             />
           </div>
           <p className="text-xs text-gray-500 mt-4 pt-3 border-t border-gov-border">
-            หากต้องการแก้ไขข้อมูลส่วนตัว เช่น เบอร์โทร อีเมล หรือที่อยู่ —
+            หากต้องการแก้ไขข้อมูลส่วนตัว เช่น เบอร์โทร อีเมล —
             กรุณาติดต่อเจ้าหน้าที่หรือใช้ฟีเจอร์ "แก้ไขข้อมูล" ในเวอร์ชันถัดไป
           </p>
         </section>

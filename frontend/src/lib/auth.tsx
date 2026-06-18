@@ -5,7 +5,7 @@ import {
 import { api } from '@/shared/api/endpoints';
 import { setAuthToken } from '@/shared/api/client';
 import type { RegisterRequest } from '../../../shared/api';
-import type { Role, User } from './types';
+import type { User } from './types';
 
 const TOKEN_KEY = 'carekan.auth.token';
 
@@ -16,7 +16,6 @@ interface AuthContextValue {
   login: (nationalId: string, password: string) => Promise<User>;
   register: (input: RegisterRequest) => Promise<User>;
   logout: () => void;
-  hasRole: (role: Role) => boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -37,7 +36,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(() => readToken() !== null);
 
-  // Re-hydrate session from a stored token on first mount.
   useEffect(() => {
     const token = readToken();
     if (!token) return;
@@ -70,11 +68,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
-  const hasRole = useCallback((role: Role) => user?.role === role, [user]);
-
   const value = useMemo<AuthContextValue>(() => ({
-    user, isAuthenticated: user !== null, isLoading, login, register, logout, hasRole,
-  }), [user, isLoading, login, register, logout, hasRole]);
+    user, isAuthenticated: user !== null, isLoading, login, register, logout,
+  }), [user, isLoading, login, register, logout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

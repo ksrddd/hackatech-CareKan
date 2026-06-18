@@ -5,11 +5,8 @@ interface LocationState {
   from?: string;
 }
 
-/** Inverse of ProtectedRoute: keeps already-authenticated users OUT of the
- *  guest-only pages (login, register) and sends them to their role home.
- *  Honors a `from` hint so a protected-route bounce still lands where intended. */
 export function GuestRoute() {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
@@ -18,11 +15,10 @@ export function GuestRoute() {
 
   if (isAuthenticated) {
     const state = location.state as LocationState | null;
-    const home = user?.role === 'admin' ? '/admin' : '/my-appointments';
     const target =
       state?.from && state.from !== '/login' && state.from !== '/register'
         ? state.from
-        : home;
+        : '/my-appointments';
     return <Navigate to={target} replace />;
   }
 

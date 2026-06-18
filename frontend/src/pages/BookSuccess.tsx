@@ -10,7 +10,6 @@ import {
 } from '@/lib/format';
 import {
   clinicLabel,
-  insuranceRightLabel,
   serviceTypeLabel,
 } from '@/lib/types';
 
@@ -125,8 +124,6 @@ export function BookSuccess() {
                     ({maskNationalId(user.nationalId)})
                   </span>
                 </dd>
-                <dt className="font-semibold">สิทธิ</dt>
-                <dd>{insuranceRightLabel[user.insuranceRight]}</dd>
               </>
             )}
           </dl>

@@ -14,7 +14,6 @@ import {
 import {
   appointmentStatusLabel,
   clinicLabel,
-  insuranceRightLabel,
   serviceTypeLabel,
 } from '@/lib/types';
 
@@ -117,10 +116,6 @@ function AppointmentDetailInner({ id }: { id: string }) {
                   <dt className="text-gray-500">เลข ปชช.</dt>
                   <dd className="font-medium font-mono">
                     {maskNationalId(user.nationalId)}
-                  </dd>
-                  <dt className="text-gray-500">สิทธิการรักษา</dt>
-                  <dd className="font-medium">
-                    {insuranceRightLabel[user.insuranceRight]}
                   </dd>
                 </>
               )}

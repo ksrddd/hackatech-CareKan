@@ -12,7 +12,6 @@ import {
 import { useHospital, useHospitals } from '@/lib/hospitals';
 import {
   clinicLabel,
-  insuranceRightLabel,
   serviceTypeLabel,
   type ClinicCode,
   type ServiceType,
@@ -373,10 +372,6 @@ export function BookAppointment() {
               <dl className="grid grid-cols-[180px_1fr] gap-x-4 gap-y-2">
                 <dt className="text-gray-500">ผู้รับบริการ</dt>
                 <dd className="font-medium">{user.fullName}</dd>
-                <dt className="text-gray-500">สิทธิการรักษา</dt>
-                <dd className="font-medium">
-                  {insuranceRightLabel[user.insuranceRight]}
-                </dd>
                 <dt className="text-gray-500">โรงพยาบาล</dt>
                 <dd className="font-medium">
                   {hospital ? hospital.shortName : hospitalId}
@@ -459,9 +454,6 @@ export function BookAppointment() {
             </h3>
             <p>
               <strong>{user.fullName}</strong>
-            </p>
-            <p className="text-sm text-gray-500">
-              {insuranceRightLabel[user.insuranceRight]}
             </p>
           </div>
         </aside>
