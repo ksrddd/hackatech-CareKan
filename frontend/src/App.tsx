@@ -1,6 +1,4 @@
-import { lazy, Suspense } from 'react';
 import { BrowserRouter, Link, Route, Routes } from 'react-router-dom';
-import { AdminLayout } from './components/AdminLayout';
 import { CitizenLayout } from './components/CitizenLayout';
 import { GuestRoute } from './components/GuestRoute';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -16,18 +14,6 @@ import { Login } from './pages/Login';
 import { MyAppointments } from './pages/MyAppointments';
 import { Profile } from './pages/Profile';
 import { Register } from './pages/Register';
-
-// Code-split admin bundle — citizen users never download it.
-// Saves ~25 KB on the initial citizen page load and keeps the
-// admin module hot-reloadable during admin-side dev work.
-const AdminDashboard = lazy(() =>
-  import('./pages/admin/AdminDashboard').then((m) => ({
-    default: m.AdminDashboard,
-  })),
-);
-const QueueView = lazy(() =>
-  import('./pages/admin/QueueView').then((m) => ({ default: m.QueueView })),
-);
 
 function NotFound() {
   return (
@@ -46,63 +32,31 @@ function NotFound() {
   );
 }
 
-function AdminLoading() {
-  return (
-    <div className="max-w-7xl mx-auto px-4 py-10 text-gray-500">
-      กำลังโหลดหน้าเจ้าหน้าที่…
-    </div>
-  );
-}
-
 export function App() {
   return (
     <AuthProvider>
       <ElderlyModeProvider>
         <BrowserRouter>
           <Routes>
-              <Route element={<CitizenLayout />}>
-                <Route index element={<Landing />} />
-                <Route element={<GuestRoute />}>
-                  <Route path="login" element={<Login />} />
-                  <Route path="register" element={<Register />} />
-                </Route>
-                <Route path="search" element={<HospitalSearch />} />
-                <Route path="hospitals/:id" element={<HospitalDetail />} />
-
-                <Route element={<ProtectedRoute role="citizen" />}>
-                  <Route path="my-appointments" element={<MyAppointments />} />
-                  <Route
-                    path="appointments/:id"
-                    element={<AppointmentDetail />}
-                  />
-                  <Route path="book" element={<BookAppointment />} />
-                  <Route path="book/success/:id" element={<BookSuccess />} />
-                  <Route path="profile" element={<Profile />} />
-                </Route>
+            <Route element={<CitizenLayout />}>
+              <Route index element={<Landing />} />
+              <Route element={<GuestRoute />}>
+                <Route path="login" element={<Login />} />
+                <Route path="register" element={<Register />} />
               </Route>
+              <Route path="search" element={<HospitalSearch />} />
+              <Route path="hospitals/:id" element={<HospitalDetail />} />
 
-              <Route path="admin" element={<AdminLayout />}>
-                <Route element={<ProtectedRoute role="admin" />}>
-                  <Route
-                    index
-                    element={
-                      <Suspense fallback={<AdminLoading />}>
-                        <AdminDashboard />
-                      </Suspense>
-                    }
-                  />
-                  <Route
-                    path="queue"
-                    element={
-                      <Suspense fallback={<AdminLoading />}>
-                        <QueueView />
-                      </Suspense>
-                    }
-                  />
-                </Route>
+              <Route element={<ProtectedRoute />}>
+                <Route path="my-appointments" element={<MyAppointments />} />
+                <Route path="appointments/:id" element={<AppointmentDetail />} />
+                <Route path="book" element={<BookAppointment />} />
+                <Route path="book/success/:id" element={<BookSuccess />} />
+                <Route path="profile" element={<Profile />} />
               </Route>
+            </Route>
 
-              <Route path="*" element={<NotFound />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
       </ElderlyModeProvider>
