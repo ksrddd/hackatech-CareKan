@@ -13,10 +13,6 @@ export function toUserDto(u: UserRow): User {
     sex: u.sex,
     phone: u.phoneNumber,
     email: u.email,
-    role: u.role,
-    insuranceRight: u.insuranceRight,
-    primaryHospitalId: u.primaryHospitalId,
-    hospitalPatientId: u.hospitalPatientId,
     consentAt: u.consentAt ? u.consentAt.toISOString() : null,
     createdAt: u.createdAt.toISOString(),
   };
@@ -56,7 +52,6 @@ export function toAppointmentDto(
     endTime: r.schedule.endTime,
     queueNumber: r.queueNumber,
     status: r.status,
-    checkedInAt: r.checkedInAt ? r.checkedInAt.toISOString() : null,
     createdAt: r.createdAt.toISOString(),
   };
 }

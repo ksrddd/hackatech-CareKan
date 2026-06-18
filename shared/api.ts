@@ -4,11 +4,9 @@
 
 import type {
   Appointment,
-  AppointmentStatus,
   ClinicCode,
   Hospital,
   InsuranceRight,
-  Role,
   ServiceType,
   Sex,
   TimeSlot,
@@ -100,36 +98,3 @@ export interface MyAppointmentsResponse {
   history: Appointment[];
 }
 
-// ─── Admin ─────────────────────────────────────────────────────────
-
-export interface AdminQueueQuery {
-  hospitalId: string;
-  clinic?: ClinicCode;
-  date: string;
-}
-
-export interface AdminQueueResponse {
-  appointments: Appointment[];
-}
-
-export interface UpdateStatusRequest {
-  status: AppointmentStatus;
-}
-
-// ─── Helper: route → role gate ─────────────────────────────────────
-// Useful on the backend to wire RBAC middleware tablewise.
-
-export const ROUTE_ROLES: Record<string, Role | 'public'> = {
-  'POST /auth/login': 'public',
-  'POST /auth/register': 'public',
-  'POST /auth/logout': 'public',
-  'GET /auth/me': 'citizen',
-  'GET /hospitals': 'public',
-  'GET /hospitals/:id': 'public',
-  'GET /hospitals/:id/time-slots': 'public',
-  'POST /appointments': 'citizen',
-  'GET /appointments/me': 'citizen',
-  'GET /appointments/:id': 'citizen',
-  'GET /admin/queue': 'admin',
-  'PATCH /admin/appointments/:id/status': 'admin',
-};

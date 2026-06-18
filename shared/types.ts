@@ -2,8 +2,6 @@
 // Authoritative source for frontend AND backend. No React, no runtime deps.
 // Both sides import from this file so the wire shapes stay in sync.
 
-export type Role = 'citizen' | 'admin';
-
 export type InsuranceRight = 'uc' | 'sso' | 'csmbs' | 'self_pay';
 
 export const insuranceRightLabel: Record<InsuranceRight, string> = {
@@ -23,10 +21,6 @@ export interface User {
   sex: Sex;
   phone: string;
   email: string;
-  role: Role;
-  insuranceRight: InsuranceRight;
-  primaryHospitalId: string | null;
-  hospitalPatientId: string | null;
   consentAt: string | null;
   createdAt: string;
 }
@@ -154,6 +148,5 @@ export interface Appointment {
   endTime: string;
   queueNumber: string;
   status: AppointmentStatus;
-  checkedInAt: string | null;
   createdAt: string;
 }

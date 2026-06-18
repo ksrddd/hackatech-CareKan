@@ -36,9 +36,7 @@ export function Login() {
       const target =
         state?.from && state.from !== '/login'
           ? state.from
-          : user.role === 'admin'
-            ? '/admin'
-            : '/my-appointments';
+          : '/my-appointments';
       navigate(target, { replace: true });
     })();
   }
