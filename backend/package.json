@@ -26,7 +26,6 @@
     "express": "^4.21.2",
     "googleapis": "^173.0.0",
     "jsonwebtoken": "^9.0.2",
-    "xlsx": "^0.18.5",
     "zod": "^3.24.1"
   },
   "devDependencies": {

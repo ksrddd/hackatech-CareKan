@@ -72,16 +72,9 @@ export const apiKeyRequestFormSchema = z.object({
     .string()
     .trim()
     .regex(/^[0-9+\-\s()]{6,20}$/, 'เบอร์โทรไม่ถูกต้อง'),
-  referenceNumber: z.string().trim().max(120).optional(),
   purpose: z.string().trim().min(10, 'กรุณาระบุวัตถุประสงค์โดยละเอียด (อย่างน้อย 10 ตัวอักษร)'),
   driveLinks: z
     .array(driveUrl)
     .min(1, 'กรุณาวางลิงก์ Google Drive อย่างน้อย 1 รายการ')
     .max(10, 'แนบลิงก์ได้สูงสุด 10 รายการต่อคำขอ'),
-});
-
-export type ApiKeyRequestFormInput = z.infer<typeof apiKeyRequestFormSchema>;
-
-export const apiKeyVerifySchema = z.object({
-  token: z.string().min(20, 'โทเคนยืนยันไม่ถูกต้อง'),
 });
