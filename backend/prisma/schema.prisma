@@ -63,18 +63,6 @@ enum AppointmentStatus {
   no_show
 }
 
-enum ApiKeyRequestStatus {
-  pending_email
-  email_verified
-  approved
-  rejected
-  revoked
-}
-
-enum ApiKeyScope {
-  read_queue
-}
-
 model User {
   id          String    @id @default(cuid())
   nationalId  String    @unique @map("national_id")
@@ -88,75 +76,23 @@ model User {
   consentAt   DateTime? @map("consent_at")
   createdAt   DateTime  @default(now()) @map("created_at")
 
-  reserves       Reserve[]
-  apiKeyRequests ApiKeyRequest[]
-  apiKeys        ApiKey[]
+  reserves Reserve[]
 
   @@map("users")
 }
 
-model ApiKeyRequest {
-  id                    String              @id @default(cuid())
-  userId                String              @map("user_id")
-  organizationName      String              @map("organization_name")
-  staffFullName         String              @map("staff_full_name")
-  position              String
-  organizationEmail     String              @map("organization_email")
-  contactPhone          String              @map("contact_phone")
-  referenceNumber       String?             @map("reference_number")
-  purpose               String
-  driveLinks            String[]            @map("drive_links")
-  status                ApiKeyRequestStatus @default(pending_email)
-  verificationTokenHash String?             @map("verification_token_hash")
-  verificationExpiresAt DateTime?           @map("verification_expires_at")
-  verifiedAt            DateTime?           @map("verified_at")
-  rejectedReason        String?             @map("rejected_reason")
-  createdAt             DateTime            @default(now()) @map("created_at")
-  updatedAt             DateTime            @updatedAt @map("updated_at")
+model HospitalApiKey {
+  id               String    @id @default(cuid())
+  organizationName String    @map("organization_name")
+  hospitalId       String    @map("hospital_id")
+  prefix           String    @map("prefix")
+  hash             String    @unique @map("hash")
+  scope            String    @default("hospital_write") @map("scope")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  revokedAt        DateTime? @map("revoked_at")
+  lastUsedAt       DateTime? @map("last_used_at")
 
-  user    User     @relation(fields: [userId], references: [id])
-  apiKeys ApiKey[]
-
-  @@index([userId, status])
-  @@map("api_key_requests")
-}
-
-model ApiKey {
-  id               String      @id @default(cuid())
-  requestId        String      @map("request_id")
-  userId           String      @map("user_id")
-  organizationName String      @map("organization_name")
-  prefix           String      @map("prefix")
-  hash             String      @map("hash")
-  scope            ApiKeyScope @default(read_queue)
-  revokedAt        DateTime?   @map("revoked_at")
-  lastUsedAt       DateTime?   @map("last_used_at")
-  createdAt        DateTime    @default(now()) @map("created_at")
-
-  user    User             @relation(fields: [userId], references: [id])
-  request ApiKeyRequest    @relation(fields: [requestId], references: [id])
-  usage   ApiKeyUsageLog[]
-
-  @@unique([hash])
-  @@index([userId])
-  @@index([requestId])
-  @@map("api_keys")
-}
-
-model ApiKeyUsageLog {
-  id         String   @id @default(cuid())
-  apiKeyId   String   @map("api_key_id")
-  endpoint   String
-  method     String
-  ipAddress  String?  @map("ip_address")
-  userAgent  String?  @map("user_agent")
-  statusCode Int      @map("status_code")
-  createdAt  DateTime @default(now()) @map("created_at")
-
-  apiKey ApiKey @relation(fields: [apiKeyId], references: [id])
-
-  @@index([apiKeyId, createdAt])
-  @@map("api_key_usage_logs")
+  @@map("hospital_api_keys")
 }
 
 model Hospital {

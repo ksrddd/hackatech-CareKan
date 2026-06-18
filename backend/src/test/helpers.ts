@@ -15,4 +15,5 @@ export async function resetDb(prisma: PrismaClient): Promise<void> {
   await prisma.schedule.deleteMany();
   await prisma.user.deleteMany();
   await prisma.hospital.deleteMany();
+  await prisma.hospitalApiKey.deleteMany();
 }
