@@ -4,13 +4,11 @@ import { toUserDto, toTimeSlotDto } from '../services/mappers.js';
 describe('mappers', () => {
   it('maps a user row to the User DTO (camelCase, fullName joined)', () => {
     const dto = toUserDto({
-      id: 'u1', nationalId: '1234567890123', username: '1234567890123',
+      id: 'u1', nationalId: '1234567890123',
       firstName: 'สมพร', lastName: 'ชัยพัฒน์', phoneNumber: '0812345678',
-      email: 'a@b.c', profileImage: null, password: 'hash', address: null,
-      insuranceId: null, insuranceRight: 'uc', role: 'citizen',
-      birthDate: '1958-04-12', sex: 'female', primaryHospitalId: 'klang',
-      hospitalPatientId: null, consentAt: new Date('2026-01-01'),
-      createdAt: new Date('2026-01-01'),
+      email: 'a@b.c', password: 'hash',
+      birthDate: '1958-04-12', sex: 'female',
+      consentAt: new Date('2026-01-01'), createdAt: new Date('2026-01-01'),
     });
     expect(dto.fullName).toBe('สมพร ชัยพัฒน์');
     expect(dto.phone).toBe('0812345678');

@@ -7,11 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  citizen
-  admin
-}
-
 enum InsuranceRight {
   uc
   sso
@@ -69,25 +64,17 @@ enum AppointmentStatus {
 }
 
 model User {
-  id               String         @id @default(cuid())
-  nationalId       String         @unique @map("national_id")
-  username         String         @map("username")
-  firstName        String         @map("first_name")
-  lastName         String         @map("last_name")
-  phoneNumber      String         @map("phone_number")
-  email            String         @unique
-  profileImage     String?        @map("profile_image")
-  password         String
-  address          String?
-  insuranceId      String?        @map("insurance_id")
-  insuranceRight   InsuranceRight @map("insurance_right")
-  role             Role           @default(citizen)
-  birthDate        String         @map("birth_date")
-  sex              Sex            @default(unspecified)
-  primaryHospitalId String?       @map("primary_hospital_id")
-  hospitalPatientId String?       @map("hospital_patient_id")
-  consentAt        DateTime?      @map("consent_at")
-  createdAt        DateTime       @default(now()) @map("created_at")
+  id          String    @id @default(cuid())
+  nationalId  String    @unique @map("national_id")
+  firstName   String    @map("first_name")
+  lastName    String    @map("last_name")
+  phoneNumber String    @map("phone_number")
+  email       String    @unique
+  password    String
+  birthDate   String    @map("birth_date")
+  sex         Sex       @default(unspecified)
+  consentAt   DateTime? @map("consent_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
 
   reserves Reserve[]
 
@@ -119,8 +106,8 @@ model Schedule {
   id            String     @id @default(cuid())
   hospitalId    String     @map("hospital_id")
   clinic        ClinicCode
-  date          String // 'YYYY-MM-DD'
-  startTime     String     @map("start_time") // 'HH:MM'
+  date          String
+  startTime     String     @map("start_time")
   endTime       String     @map("end_time")
   maxCapacity   Int        @map("max_capacity")
   currentBooked Int        @default(0) @map("current_booked")
@@ -135,19 +122,16 @@ model Schedule {
 }
 
 model Reserve {
-  id              String            @id @default(cuid())
-  bookingCode     String            @unique @map("booking_code")
-  userId          String            @map("user_id")
-  hospitalId      String            @map("hospital_id")
-  scheduleId      String            @map("schedule_id")
-  purpose         ServiceType
-  reason          String            @default("")
-  status          AppointmentStatus @default(confirmed)
-  queueNumber     String            @map("queue_number")
-  currentStationId Int?             @map("current_station_id")
-  queueUpdatedAt  DateTime?         @map("queue_updated_at")
-  checkedInAt     DateTime?         @map("checked_in_at")
-  createdAt       DateTime          @default(now()) @map("created_at")
+  id          String            @id @default(cuid())
+  bookingCode String            @unique @map("booking_code")
+  userId      String            @map("user_id")
+  hospitalId  String            @map("hospital_id")
+  scheduleId  String            @map("schedule_id")
+  purpose     ServiceType
+  reason      String            @default("")
+  status      AppointmentStatus @default(confirmed)
+  queueNumber String            @map("queue_number")
+  createdAt   DateTime          @default(now()) @map("created_at")
 
   user     User     @relation(fields: [userId], references: [id])
   hospital Hospital @relation(fields: [hospitalId], references: [id])

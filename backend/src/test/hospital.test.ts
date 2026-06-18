@@ -9,10 +9,10 @@ const app = makeTestApp();
 beforeAll(async () => { await resetDb(prisma); await runSeed(prisma); });
 
 describe('hospitals', () => {
-  it('lists all 9 hospitals', async () => {
+  it('lists all 45 hospitals', async () => {
     const res = await request(app).get('/api/hospitals');
     expect(res.status).toBe(200);
-    expect(res.body.hospitals).toHaveLength(9);
+    expect(res.body.hospitals).toHaveLength(45);
   });
 
   it('filters by zone', async () => {
