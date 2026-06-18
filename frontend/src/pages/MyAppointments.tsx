@@ -1,17 +1,16 @@
 import { Link } from 'react-router-dom';
 import { QueueStatusBadge } from '@/components/QueueStatusBadge';
 import { useAuth } from '@/lib/auth';
-import { useBookings } from '@/lib/bookingsStore';
+import { useMyAppointments } from '@/lib/appointments';
+import { useHospitals } from '@/lib/hospitals';
 import {
   ageFromBirth,
   formatBuddhistDateShort,
   formatThaiWeekday,
   formatTimeRange,
-  isPastDate,
   maskNationalId,
   nowFormatted,
 } from '@/lib/format';
-import { getHospital } from '@/lib/mockData';
 import {
   clinicLabel,
   insuranceRightLabel,
@@ -19,23 +18,43 @@ import {
 
 export function MyAppointments() {
   const { user } = useAuth();
-  const { myBookings } = useBookings();
+  const { state } = useMyAppointments();
+  const { state: hospitalsState } = useHospitals({});
+
   if (!user) return null;
 
-  const all = myBookings(user.id);
-  const upcoming = all
-    .filter((a) => !isPastDate(a.date) && a.status !== 'cancelled')
-    .sort((a, b) =>
-      a.date === b.date
-        ? a.startTime.localeCompare(b.startTime)
-        : a.date.localeCompare(b.date),
+  // Build hospital name lookup map from the full list (single request, no N per-card calls)
+  const hospitalNames = new Map<string, string>();
+  if (hospitalsState.kind === 'success') {
+    for (const h of hospitalsState.data) {
+      hospitalNames.set(h.id, h.shortName);
+    }
+  }
+
+  if (state.kind === 'submitting') {
+    return (
+      <div className="max-w-6xl mx-auto px-4 py-12 text-center text-gray-500">
+        กำลังโหลดนัดหมาย…
+      </div>
     );
-  const history = all
-    .filter((a) => isPastDate(a.date) || a.status === 'completed' || a.status === 'no_show' || a.status === 'cancelled')
-    .sort((a, b) => b.date.localeCompare(a.date));
+  }
+
+  if (state.kind === 'error') {
+    return (
+      <div className="max-w-6xl mx-auto px-4 py-12 text-center">
+        <p className="text-red-700 font-semibold">เกิดข้อผิดพลาด: {state.error.message}</p>
+        <Link to="/" className="mt-4 inline-block text-blue-800 hover:underline">
+          กลับหน้าหลัก
+        </Link>
+      </div>
+    );
+  }
+
+  const upcoming = state.kind === 'success' ? state.data.upcoming : [];
+  const history = state.kind === 'success' ? state.data.history : [];
 
   const next = upcoming[0];
-  const nextHospital = next ? getHospital(next.hospitalId) : undefined;
+  const nextHospitalName = next ? (hospitalNames.get(next.hospitalId) ?? next.hospitalId) : undefined;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 pb-12">
@@ -50,12 +69,12 @@ export function MyAppointments() {
         สวัสดี คุณ{user.fullName} · เข้าใช้งานล่าสุด {nowFormatted()}
       </p>
 
-      {next && nextHospital && (
+      {next && nextHospitalName && (
         <div className="border-l-[6px] border-gov-primary bg-gov-primary-tint px-4 py-3 text-[0.95rem] mb-5">
           <strong className="block">
             นัดถัดไป: {formatBuddhistDateShort(next.date)} เวลา {next.startTime} น.
           </strong>
-          {clinicLabel[next.clinic]} {nextHospital.shortName} —
+          {clinicLabel[next.clinic]} {nextHospitalName} —
           แสดงหมายเลขคิว {next.queueNumber} ที่จุดประชาสัมพันธ์เพื่อรับบัตรคิว
         </div>
       )}
@@ -101,7 +120,7 @@ export function MyAppointments() {
                 </thead>
                 <tbody>
                   {upcoming.map((a) => {
-                    const hosp = getHospital(a.hospitalId);
+                    const hospName = hospitalNames.get(a.hospitalId) ?? a.hospitalId;
                     return (
                       <tr
                         key={a.id}
@@ -116,7 +135,7 @@ export function MyAppointments() {
                           </span>
                         </td>
                         <td className="p-2 align-middle">
-                          <strong>{hosp?.shortName ?? a.hospitalId}</strong>
+                          <strong>{hospName}</strong>
                           <br />
                           <span className="text-gray-500 text-sm">
                             {clinicLabel[a.clinic]}
@@ -171,7 +190,7 @@ export function MyAppointments() {
                 </thead>
                 <tbody>
                   {history.map((a) => {
-                    const hosp = getHospital(a.hospitalId);
+                    const hospName = hospitalNames.get(a.hospitalId) ?? a.hospitalId;
                     return (
                       <tr
                         key={a.id}
@@ -179,7 +198,7 @@ export function MyAppointments() {
                       >
                         <td className="p-2">{formatBuddhistDateShort(a.date)}</td>
                         <td className="p-2">{clinicLabel[a.clinic]}</td>
-                        <td className="p-2">{hosp?.shortName}</td>
+                        <td className="p-2">{hospName}</td>
                         <td className="p-2">
                           <QueueStatusBadge status={a.status} />
                         </td>

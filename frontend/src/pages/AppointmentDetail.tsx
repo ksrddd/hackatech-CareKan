@@ -1,43 +1,76 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { QrStub } from '@/components/QrStub';
 import { QueueStatusBadge } from '@/components/QueueStatusBadge';
 import { useAuth } from '@/lib/auth';
-import { useBookings } from '@/lib/bookingsStore';
+import { useAppointment } from '@/lib/appointments';
+import { useHospital } from '@/lib/hospitals';
 import {
   formatBuddhistDate,
   formatTimeRange,
   isPastDate,
   maskNationalId,
 } from '@/lib/format';
-import { getHospital } from '@/lib/mockData';
 import {
+  appointmentStatusLabel,
   clinicLabel,
   insuranceRightLabel,
   serviceTypeLabel,
 } from '@/lib/types';
 
-export function AppointmentDetail() {
-  const { id } = useParams<{ id: string }>();
-  const { getBooking } = useBookings();
+// Inner component that receives a confirmed id and renders the detail.
+// Separated so hooks are always called unconditionally.
+function AppointmentDetailInner({ id }: { id: string }) {
   const { user } = useAuth();
-  const [tick, setTick] = useState(0);
+  const { state, refetch } = useAppointment(id);
 
+  // 5-second live queue polling
   useEffect(() => {
-    const t = window.setInterval(() => setTick((n) => n + 1), 5000);
-    return () => window.clearInterval(t);
-  }, []);
+    const t = setInterval(refetch, 5000);
+    return () => clearInterval(t);
+  }, [refetch]);
 
-  if (!id) return <Navigate to="/my-appointments" replace />;
+  // Fetch hospital name once we have the hospitalId (from success state)
+  const hospitalId = state.kind === 'success' ? state.data.hospitalId : '';
+  const { state: hospitalState } = useHospital(hospitalId);
+  const hospital =
+    hospitalState.kind === 'success' ? hospitalState.data.hospital : null;
+
   if (!user) return <Navigate to="/login" replace />;
-  // Ownership-scoped read: citizens can never view another patient's record,
-  // even with a guessed ID. ProtectedRoute only checks role.
-  const appt = getBooking(id, { requireOwnerUserId: user.id });
-  if (!appt) return <Navigate to="/my-appointments" replace />;
 
-  const hospital = getHospital(appt.hospitalId);
-  const queueNumeric = Number(appt.queueNumber.slice(1));
-  const beforeMe = Math.max(0, queueNumeric - 38 - (tick % 4));
+  if (state.kind === 'submitting') {
+    return (
+      <div className="max-w-5xl mx-auto px-4 py-12 text-center text-gray-500">
+        กำลังโหลด…
+      </div>
+    );
+  }
+
+  // PDPA owner check is server-side: a non-owner or missing id yields a 404 ApiError.
+  // Render "ไม่พบนัดหมาย" without leaking any information about the record.
+  if (state.kind === 'error') {
+    return (
+      <div className="max-w-5xl mx-auto px-4 py-12 text-center">
+        <p className="text-xl font-semibold text-gray-700 mb-3">ไม่พบนัดหมาย</p>
+        <p className="text-gray-500 mb-5">
+          หมายเลขนัดหมายนี้ไม่มีในระบบ หรือคุณไม่มีสิทธิ์เข้าถึง
+        </p>
+        <Link to="/my-appointments" className="text-blue-800 hover:underline">
+          กลับไปนัดหมายของฉัน
+        </Link>
+      </div>
+    );
+  }
+
+  // idle should not happen (useQuery starts in 'submitting'), but guard anyway
+  if (state.kind === 'idle') return null;
+
+  const appt = state.data;
+
+  // Queue widget: driven by the appointment's own queueNumber and status only.
+  // No cross-patient data is fetched (PDPA). The numeric part of the queue
+  // number is used purely for display — "คิวของคุณ".
+  const showQueue = !isPastDate(appt.date) && appt.status !== 'cancelled';
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 pb-12">
@@ -123,7 +156,7 @@ export function AppointmentDetail() {
             </dl>
           </section>
 
-          {!isPastDate(appt.date) && appt.status !== 'cancelled' && (
+          {showQueue && (
             <section className="bg-white border border-gov-border p-5">
               <div className="flex justify-between items-center pb-2 mb-3 border-b border-gov-border">
                 <h2 className="text-lg font-semibold">สถานะคิวสด</h2>
@@ -132,20 +165,11 @@ export function AppointmentDetail() {
                   อัปเดตเองทุก 5 วินาที
                 </span>
               </div>
-              <div className="grid sm:grid-cols-3 gap-4 text-center">
-                <div className="border-2 border-gov-primary p-4">
-                  <p className="text-xs text-gray-500 mb-1">คิวปัจจุบัน</p>
-                  <p className="text-3xl font-bold text-gov-primary">
-                    A{String(38 + (tick % 4)).padStart(3, '0')}
-                  </p>
-                </div>
+              <div className="grid sm:grid-cols-2 gap-4 text-center">
                 <div className="border-2 border-gov-wait-ink p-4">
-                  <p className="text-xs text-gray-500 mb-1">รอก่อนคุณ</p>
-                  <p className="text-3xl font-bold text-gov-wait-ink">
-                    {beforeMe}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    คิว · เฉลี่ย ~12 นาที/คน
+                  <p className="text-xs text-gray-500 mb-1">สถานะนัดหมาย</p>
+                  <p className="text-xl font-bold text-gov-wait-ink">
+                    {appointmentStatusLabel[appt.status]}
                   </p>
                 </div>
                 <div className="border-2 border-gov-ink p-4">
@@ -193,4 +217,12 @@ export function AppointmentDetail() {
       </div>
     </div>
   );
+}
+
+export function AppointmentDetail() {
+  const { id } = useParams<{ id: string }>();
+
+  if (!id) return <Navigate to="/my-appointments" replace />;
+
+  return <AppointmentDetailInner id={id} />;
 }
