@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import type { LoginResponse, MeResponse } from '../../../shared/api';
+import type { LoginResponse, MeResponse } from '../../../shared/api.js';
 import { prisma } from '../prisma.js';
 import { ApiError } from '../errors.js';
 import { loginSchema, registerSchema } from '../validation/schemas.js';
@@ -12,7 +12,7 @@ export async function login(req: Request, res: Response): Promise<void> {
   if (!user || !(await verifyPassword(password, user.password))) {
     throw new ApiError('เลขบัตรประชาชนหรือรหัสผ่านไม่ถูกต้อง', 401, 'BAD_CREDENTIALS');
   }
-  const token = signToken({ sub: user.id, role: user.role });
+  const token = signToken({ sub: user.id });
   res.json({ user: toUserDto(user), token } satisfies LoginResponse);
 }
 
@@ -24,19 +24,19 @@ export async function register(req: Request, res: Response): Promise<void> {
   if (exists) throw new ApiError('มีบัญชีนี้อยู่แล้ว', 409, 'DUPLICATE');
   const user = await prisma.user.create({
     data: {
-      nationalId: body.nationalId, username: body.nationalId,
+      nationalId: body.nationalId,
       firstName: body.firstName, lastName: body.lastName, phoneNumber: body.phone,
       email: body.email, password: await hashPassword(body.password),
-      insuranceRight: 'uc', role: 'citizen', birthDate: body.birthDate,
+      birthDate: body.birthDate,
       sex: body.sex, consentAt: new Date(body.acceptedPdpaAt),
     },
   });
-  const token = signToken({ sub: user.id, role: user.role });
+  const token = signToken({ sub: user.id });
   res.status(201).json({ user: toUserDto(user), token } satisfies LoginResponse);
 }
 
 export function logout(_req: Request, res: Response): void {
-  res.status(204).send(); // JWT is stateless; client drops the token.
+  res.status(204).send();
 }
 
 export async function me(req: Request, res: Response): Promise<void> {
