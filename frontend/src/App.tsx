@@ -14,6 +14,7 @@ import { HospitalSearch } from './pages/HospitalSearch';
 import { Landing } from './pages/Landing';
 import { Login } from './pages/Login';
 import { MyAppointments } from './pages/MyAppointments';
+import { Profile } from './pages/Profile';
 import { Register } from './pages/Register';
 
 // Code-split admin bundle — citizen users never download it.
@@ -76,6 +77,7 @@ export function App() {
                   />
                   <Route path="book" element={<BookAppointment />} />
                   <Route path="book/success/:id" element={<BookSuccess />} />
+                  <Route path="profile" element={<Profile />} />
                 </Route>
               </Route>
 

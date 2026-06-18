@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { HospitalCard } from '@/components/HospitalCard';
 import { useHospitals } from '@/lib/hospitals';
@@ -12,15 +12,22 @@ import {
 } from '@/lib/types';
 
 const ALL_DISTRICTS = [
-  'ป้อมปราบศัตรูพ่าย',
-  'คลองสาน',
-  'บางคอแหลม',
-  'หนองแขม',
-  'บางแค',
-  'บางขุนเทียน',
-  'หนองจอก',
-  'ลาดกระบัง',
-  'ประเวศ',
+  // กรุงเทพกลาง
+  'พระนคร', 'ดุสิต', 'ป้อมปราบศัตรูพ่าย', 'สัมพันธวงศ์', 'ดินแดง',
+  'ห้วยขวาง', 'พญาไท', 'ราชเทวี', 'วังทองหลาง',
+  // กรุงเทพเหนือ
+  'จตุจักร', 'บางซื่อ', 'ลาดพร้าว', 'หลักสี่', 'ดอนเมือง', 'สายไหม', 'บางเขน',
+  // กรุงเทพใต้
+  'สาทร', 'บางรัก', 'บางคอแหลม', 'ยานนาวา', 'คลองเตย', 'วัฒนา',
+  'ปทุมวัน', 'พระโขนง', 'สวนหลวง', 'บางนา',
+  // กรุงเทพตะวันออก
+  'ลาดกระบัง', 'มีนบุรี', 'หนองจอก', 'คลองสามวา', 'สะพานสูง', 'ประเวศ',
+  'บางกะปิ', 'บึงกุ่ม', 'คันนายาว',
+  // กรุงธนเหนือ
+  'ธนบุรี', 'คลองสาน', 'จอมทอง', 'บางกอกใหญ่', 'บางกอกน้อย',
+  'บางพลัด', 'ตลิ่งชัน', 'ทวีวัฒนา',
+  // กรุงธนใต้
+  'ภาษีเจริญ', 'หนองแขม', 'บางแค', 'บางขุนเทียน', 'บางบอน', 'ทุ่งครุ', 'ราษฎร์บูรณะ',
 ];
 
 export function HospitalSearch() {
@@ -30,6 +37,8 @@ export function HospitalSearch() {
   const [services, setServices] = useState<Set<ServiceType>>(new Set());
   const [rights, setRights] = useState<Set<InsuranceRight>>(new Set());
   const [sortBy, setSortBy] = useState<'distance' | 'name'>('distance');
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 10;
 
   const apiQuery = useMemo(
     () => ({
@@ -51,6 +60,19 @@ export function HospitalSearch() {
       return list.sort((a, b) => a.mockDistanceKm - b.mockDistanceKm);
     return list.sort((a, b) => a.shortName.localeCompare(b.shortName));
   }, [state, sortBy]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedHospitals.length / PAGE_SIZE));
+  useEffect(() => {
+    setPage(0);
+  }, [query, districts, zones, services, rights, sortBy]);
+  useEffect(() => {
+    if (page >= totalPages) setPage(0);
+  }, [page, totalPages]);
+
+  const pagedHospitals = useMemo(
+    () => sortedHospitals.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
+    [sortedHospitals, page],
+  );
 
   function toggle<T>(set: Set<T>, val: T, setter: (s: Set<T>) => void) {
     const next = new Set(set);
@@ -79,8 +101,12 @@ export function HospitalSearch() {
       </p>
       <h1 className="text-2xl font-bold mb-1">ค้นหาโรงพยาบาล</h1>
       <p className="text-gray-600 mb-5">
-        ในเครือ สำนักการแพทย์ กรุงเทพมหานคร ทั้งหมด{' '}
-        <strong>9 โรงพยาบาล</strong>
+        โรงพยาบาลรัฐในกรุงเทพมหานคร
+        {totalCount !== null && (
+          <>
+            {' '}ทั้งหมด <strong>{totalCount} โรงพยาบาล</strong>
+          </>
+        )}
       </p>
 
       <form
@@ -110,17 +136,19 @@ export function HospitalSearch() {
 
           <fieldset className="mb-4">
             <legend className="font-semibold text-sm mb-2">เขต</legend>
-            {ALL_DISTRICTS.map((d) => (
-              <label key={d} className="block text-sm mb-1">
-                <input
-                  type="checkbox"
-                  className="mr-2"
-                  checked={districts.has(d)}
-                  onChange={() => toggle(districts, d, setDistricts)}
-                />
-                {d}
-              </label>
-            ))}
+            <div className="max-h-56 overflow-y-auto pr-1 border border-gov-border bg-gray-50 p-2">
+              {ALL_DISTRICTS.map((d) => (
+                <label key={d} className="block text-sm mb-1">
+                  <input
+                    type="checkbox"
+                    className="mr-2"
+                    checked={districts.has(d)}
+                    onChange={() => toggle(districts, d, setDistricts)}
+                  />
+                  {d}
+                </label>
+              ))}
+            </div>
           </fieldset>
 
           <fieldset className="mb-4">
@@ -183,11 +211,18 @@ export function HospitalSearch() {
           <div className="flex justify-between items-center mb-3 text-sm">
             <span>
               {state.kind === 'submitting' && 'กำลังโหลด…'}
-              {state.kind === 'success' && (
+              {state.kind === 'success' && sortedHospitals.length > 0 && (
                 <>
-                  แสดง <strong>{sortedHospitals.length}</strong>
-                  {totalCount !== null && ` จาก ${totalCount}`} รายการ
+                  แสดง{' '}
+                  <strong>
+                    {page * PAGE_SIZE + 1}–
+                    {Math.min((page + 1) * PAGE_SIZE, sortedHospitals.length)}
+                  </strong>{' '}
+                  จาก <strong>{sortedHospitals.length}</strong> รายการ
                 </>
+              )}
+              {state.kind === 'success' && sortedHospitals.length === 0 && (
+                <>ไม่พบรายการ</>
               )}
               {state.kind === 'error' && 'เกิดข้อผิดพลาด'}
               {state.kind === 'idle' && ''}
@@ -231,11 +266,53 @@ export function HospitalSearch() {
           )}
 
           {state.kind === 'success' && sortedHospitals.length > 0 && (
-            <div className="space-y-4">
-              {sortedHospitals.map((h) => (
-                <HospitalCard key={h.id} hospital={h} />
-              ))}
-            </div>
+            <>
+              <div className="space-y-4">
+                {pagedHospitals.map((h) => (
+                  <HospitalCard key={h.id} hospital={h} />
+                ))}
+              </div>
+              {totalPages > 1 && (
+                <nav
+                  className="flex items-center justify-center gap-1 mt-6"
+                  aria-label="แบ่งหน้า"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    disabled={page === 0}
+                    className="px-3 py-1 border border-gov-border bg-white disabled:opacity-40 hover:bg-gray-50"
+                    aria-label="หน้าก่อนหน้า"
+                  >
+                    ‹
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i).map((i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setPage(i)}
+                      aria-current={i === page ? 'page' : undefined}
+                      className={
+                        i === page
+                          ? 'px-3 py-1 border-2 border-gov-primary bg-gov-primary text-white font-semibold'
+                          : 'px-3 py-1 border border-gov-border bg-white hover:bg-gray-50'
+                      }
+                    >
+                      {i + 1}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                    disabled={page >= totalPages - 1}
+                    className="px-3 py-1 border border-gov-border bg-white disabled:opacity-40 hover:bg-gray-50"
+                    aria-label="หน้าถัดไป"
+                  >
+                    ›
+                  </button>
+                </nav>
+              )}
+            </>
           )}
         </section>
       </div>

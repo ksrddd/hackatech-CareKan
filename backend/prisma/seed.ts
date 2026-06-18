@@ -1,5 +1,52 @@
-import { PrismaClient, type ClinicCode } from '@prisma/client';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { PrismaClient, type ClinicCode, type InsuranceRight, type ServiceType } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { zoneForDistrict } from '../data/bangkok-zones.js';
+
+interface GovHospitalRaw {
+  name: string;
+  name_eng: string | null;
+  address: string;
+  dcode: number | null;
+  dname: string | null;
+  tel: string | null;
+  url: string | null;
+  num_bed: number | null;
+  belong: string;
+  type: string | null;
+  lat: number | null;
+  lng: number | null;
+  sector: 'government';
+}
+
+const SEED_DIR = path.dirname(fileURLToPath(import.meta.url));
+
+function loadGovHospitals(): GovHospitalRaw[] {
+  const file = path.join(SEED_DIR, '..', 'data', 'seed', 'bangkok_hospitals_gov_all.json');
+  const raw = readFileSync(file, 'utf8').replace(/^﻿/, '');
+  return JSON.parse(raw) as GovHospitalRaw[];
+}
+
+// City hall reference for crude distance ranking until real geolocation lands.
+const BKK_CENTER_LAT = 13.7563;
+const BKK_CENTER_LNG = 100.5018;
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const R = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.asin(Math.sqrt(a));
+}
+
+function slugIdFromName(name: string): string {
+  return 'h_' + name.replace(/^โรงพยาบาล/, '').replace(/[\s.,()\/]+/g, '_').slice(0, 50);
+}
+
+const DEFAULT_SERVICES: ServiceType[] = ['opd', 'new_patient', 'follow_up'];
+const ALL_RIGHTS: InsuranceRight[] = ['uc', 'sso', 'csmbs', 'self_pay'];
 
 // ---- date helpers (ported from frontend lib/format.ts) ----
 function todayISO(): string {
@@ -218,6 +265,43 @@ export async function runSeed(prisma: PrismaClient): Promise<void> {
       },
     });
   }
+
+  // 1b. Additional Bangkok government hospitals (data.go.th — hospitalgov + hospital_bma).
+  //     Listed but not bookable yet: no schedules generated (would 5x the slot table).
+  const existingShortNames = new Set(HOSPITALS.map((h) => h.shortName));
+  let addedGov = 0;
+  for (const g of loadGovHospitals()) {
+    if (existingShortNames.has(g.name)) continue;
+    const id = slugIdFromName(g.name);
+    const district = g.dname?.trim() ?? '';
+    const distanceKm =
+      g.lat != null && g.lng != null
+        ? Math.round(haversineKm(BKK_CENTER_LAT, BKK_CENTER_LNG, g.lat, g.lng) * 10) / 10
+        : 5.0;
+    await prisma.hospital.upsert({
+      where: { id },
+      update: {},
+      create: {
+        id,
+        code: 'รพ',
+        name: g.name,
+        shortName: g.name,
+        address: g.address,
+        district,
+        zone: zoneForDistrict(district),
+        phone: (g.tel ?? '').trim() || '-',
+        openingHours: 'จันทร์–ศุกร์ 08:00–16:00',
+        description:
+          [g.belong, g.type].filter(Boolean).join(' · ') ||
+          'โรงพยาบาลรัฐในกรุงเทพมหานคร',
+        services: DEFAULT_SERVICES,
+        rightsAccepted: ALL_RIGHTS,
+        mockDistanceKm: distanceKm,
+      },
+    });
+    addedGov++;
+  }
+  console.log(`Inserted ${addedGov} additional government hospitals from data.go.th`);
 
   // 2. Schedules: next 14 weekdays × each clinic × time ranges, capacity 6.
   //    Using createMany with skipDuplicates for performance (9 × 7 × 14 × 14 ≈ 12,348 rows).

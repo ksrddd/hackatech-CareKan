@@ -28,6 +28,9 @@ export function useRequest<T, A extends unknown[]>(
   const mountedRef = useRef(true);
 
   useEffect(() => {
+    // Reset on (re-)mount so React 18 StrictMode's dev-only double-invoke
+    // (setup → cleanup → setup) doesn't leave mountedRef stuck at false.
+    mountedRef.current = true;
     return () => {
       mountedRef.current = false;
       ctrlRef.current?.abort();

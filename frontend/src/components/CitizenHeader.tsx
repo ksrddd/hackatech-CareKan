@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { maskNationalId } from '@/lib/format';
 import { GovLogo } from './GovLogo';
@@ -32,7 +32,13 @@ export function CitizenHeader() {
               </NavLink>
             </nav>
             <div className="text-sm bg-gray-100 border border-gov-border px-3 py-1 flex items-center gap-2">
-              <strong className="font-semibold">{user?.fullName}</strong>
+              <Link
+                to="/profile"
+                className="font-semibold text-gov-ink hover:underline"
+                title="ดูบัญชีของฉัน"
+              >
+                {user?.fullName}
+              </Link>
               <span className="text-gray-500 text-xs">
                 {user ? maskNationalId(user.nationalId) : ''}
               </span>

@@ -148,57 +148,92 @@ export function BookAppointment() {
         <div>
           {step === 1 && (
             <>
-              <section className="bg-white border border-gov-border p-5 mb-5">
-                <h2 className="text-lg font-semibold pb-2 mb-3 border-b border-gov-border">
-                  1.1 เลือกโรงพยาบาล
-                </h2>
-                {hospitalsState.kind === 'submitting' && (
-                  <p className="text-sm text-gray-500">กำลังโหลด…</p>
-                )}
-                {hospitalsState.kind === 'error' && (
-                  <p className="text-sm text-gov-err-ink">
-                    โหลดรายชื่อโรงพยาบาลไม่สำเร็จ: {hospitalsState.error.message}
-                  </p>
-                )}
-                {hospitalsState.kind === 'success' && (
-                  <ul className="grid gap-2 list-none p-0 m-0">
-                    {hospitals.map((h) => {
-                      const selected = h.id === hospitalId;
-                      return (
-                        <li key={h.id}>
-                          <label
-                            className={`flex gap-3 items-start border-2 p-3 cursor-pointer transition-colors ${
-                              selected
-                                ? 'border-gov-primary bg-gov-primary-tint'
-                                : 'border-gov-border bg-white hover:border-gov-primary hover:bg-gov-primary-tint'
-                            }`}
-                          >
-                            <input
-                              type="radio"
-                              name="hospital"
-                              checked={selected}
-                              onChange={() => setHospitalId(h.id)}
-                              className="mt-1 scale-110 accent-gov-primary"
-                            />
-                            <span>
-                              <span className="block font-semibold">
-                                {h.shortName}
+              {urlHospital ? (
+                <section className="bg-white border-2 border-gov-ink p-5 mb-5">
+                  <div className="flex items-center justify-between pb-2 mb-3 border-b border-gov-border">
+                    <h2 className="text-lg font-semibold">โรงพยาบาลที่จอง</h2>
+                    <Link
+                      to="/search"
+                      className="text-sm text-blue-800 hover:underline"
+                    >
+                      เปลี่ยนโรงพยาบาล
+                    </Link>
+                  </div>
+                  {hospital ? (
+                    <div>
+                      <strong className="block text-lg">
+                        {hospital.shortName}
+                      </strong>
+                      <p className="text-sm text-gray-600 mt-1">
+                        {hospital.address}
+                      </p>
+                    </div>
+                  ) : hospitalDetailState.kind === 'error' ? (
+                    <p className="text-sm text-gov-err-ink">
+                      ไม่พบโรงพยาบาลที่เลือก —{' '}
+                      <Link to="/search" className="text-blue-800 hover:underline">
+                        เลือกโรงพยาบาลใหม่
+                      </Link>
+                    </p>
+                  ) : (
+                    <p className="text-sm text-gray-500">กำลังโหลด…</p>
+                  )}
+                </section>
+              ) : (
+                <section className="bg-white border border-gov-border p-5 mb-5">
+                  <h2 className="text-lg font-semibold pb-2 mb-3 border-b border-gov-border">
+                    เลือกโรงพยาบาล
+                  </h2>
+                  {hospitalsState.kind === 'submitting' && (
+                    <p className="text-sm text-gray-500">กำลังโหลด…</p>
+                  )}
+                  {hospitalsState.kind === 'error' && (
+                    <p className="text-sm text-gov-err-ink">
+                      โหลดรายชื่อโรงพยาบาลไม่สำเร็จ:{' '}
+                      {hospitalsState.error.message}
+                    </p>
+                  )}
+                  {hospitalsState.kind === 'success' && (
+                    <ul className="grid gap-2 list-none p-0 m-0">
+                      {hospitals.map((h) => {
+                        const selected = h.id === hospitalId;
+                        return (
+                          <li key={h.id}>
+                            <label
+                              className={`flex gap-3 items-start border-2 p-3 cursor-pointer transition-colors ${
+                                selected
+                                  ? 'border-gov-primary bg-gov-primary-tint'
+                                  : 'border-gov-border bg-white hover:border-gov-primary hover:bg-gov-primary-tint'
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name="hospital"
+                                checked={selected}
+                                onChange={() => setHospitalId(h.id)}
+                                className="mt-1 scale-110 accent-gov-primary"
+                              />
+                              <span>
+                                <span className="block font-semibold">
+                                  {h.shortName}
+                                </span>
+                                <span className="block text-sm text-gray-600 mt-0.5">
+                                  {h.address} · ห่าง{' '}
+                                  {h.mockDistanceKm.toFixed(1)} กม.
+                                </span>
                               </span>
-                              <span className="block text-sm text-gray-600 mt-0.5">
-                                {h.address} · ห่าง {h.mockDistanceKm.toFixed(1)} กม.
-                              </span>
-                            </span>
-                          </label>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </section>
+                            </label>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </section>
+              )}
 
               <section className="bg-white border border-gov-border p-5 mb-5">
                 <h2 className="text-lg font-semibold pb-2 mb-3 border-b border-gov-border">
-                  1.2 เลือกคลินิก / แผนก
+                  เลือกคลินิก / แผนก
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <div>
@@ -228,7 +263,7 @@ export function BookAppointment() {
 
               <section className="bg-white border border-gov-border p-5 mb-5">
                 <h2 className="text-lg font-semibold pb-2 mb-3 border-b border-gov-border">
-                  1.3 วัตถุประสงค์
+                  วัตถุประสงค์
                 </h2>
                 <div className="grid sm:grid-cols-2 gap-3 mb-4">
                   {PURPOSE_OPTIONS.map((opt) => {

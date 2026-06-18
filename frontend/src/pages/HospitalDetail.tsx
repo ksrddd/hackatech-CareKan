@@ -150,15 +150,29 @@ export function HospitalDetail() {
 
         <aside className="space-y-5">
           <section className="bg-white border border-gov-border">
-            <div className="map-stub h-44 grid place-items-center">
-              <span className="bg-white border border-gov-ink px-3 py-1 text-sm font-semibold">
-                📍 {hospital.shortName}
-              </span>
-            </div>
-            <div className="p-4 text-sm">
-              <strong className="block mb-1">การเดินทาง</strong>
-              <p className="text-gray-500">
-                คำแนะนำเส้นทางอย่างละเอียดจะเปิดในเวอร์ชันถัดไป
+            <iframe
+              title={`แผนที่ ${hospital.shortName}`}
+              className="w-full h-56 block border-0"
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              src={`https://maps.google.com/maps?q=${encodeURIComponent(
+                `${hospital.shortName} ${hospital.address}`,
+              )}&z=16&hl=th&output=embed`}
+            />
+            <div className="p-4 text-sm space-y-2">
+              <strong className="block">การเดินทาง</strong>
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+                  `${hospital.shortName} ${hospital.address}`,
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-blue-800 hover:underline"
+              >
+                🧭 เปิดใน Google Maps (นำทาง)
+              </a>
+              <p className="text-gray-500 text-xs">
+                แผนที่จาก Google · ปักหมุดอัตโนมัติจากชื่อและที่อยู่
               </p>
             </div>
           </section>
