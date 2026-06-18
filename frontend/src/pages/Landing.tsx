@@ -120,6 +120,11 @@ export function Landing() {
             ))}
           </div>
         )}
+        {state.kind === 'error' && (
+          <p className="text-gov-err-ink text-sm py-2">
+            ไม่สามารถโหลดรายชื่อโรงพยาบาลได้ กรุณาลองใหม่อีกครั้ง
+          </p>
+        )}
         {hospitals.length > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {hospitals.map((h) => (

@@ -40,26 +40,29 @@ export function HospitalSearch() {
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 10;
 
-  const apiQuery = useMemo(
-    () => ({
-      q: query.trim() || undefined,
-      district: districts.size === 1 ? [...districts][0] : undefined,
-      zone: zones.size === 1 ? [...zones][0] : undefined,
-      service: services.size === 1 ? [...services][0] : undefined,
-      right: rights.size === 1 ? [...rights][0] : undefined,
-    }),
-    [query, districts, zones, services, rights],
-  );
-
-  const { state } = useHospitals(apiQuery);
+  const { state } = useHospitals({});
 
   const sortedHospitals = useMemo(() => {
     if (state.kind !== 'success') return [];
-    const list = [...state.data];
-    if (sortBy === 'distance')
-      return list.sort((a, b) => a.mockDistanceKm - b.mockDistanceKm);
-    return list.sort((a, b) => a.shortName.localeCompare(b.shortName));
-  }, [state, sortBy]);
+    let list = [...state.data];
+    const q = query.trim().toLowerCase();
+    if (q)
+      list = list.filter(
+        (h) =>
+          h.name.toLowerCase().includes(q) ||
+          h.shortName.toLowerCase().includes(q) ||
+          h.district.toLowerCase().includes(q),
+      );
+    if (zones.size > 0) list = list.filter((h) => zones.has(h.zone as Zone));
+    if (services.size > 0)
+      list = list.filter((h) => [...services].some((s) => h.services.includes(s)));
+    if (rights.size > 0)
+      list = list.filter((h) => [...rights].some((r) => h.rightsAccepted.includes(r)));
+    if (districts.size > 0) list = list.filter((h) => districts.has(h.district));
+    if (sortBy === 'distance') list.sort((a, b) => a.mockDistanceKm - b.mockDistanceKm);
+    else list.sort((a, b) => a.shortName.localeCompare(b.shortName, 'th'));
+    return list;
+  }, [state, query, zones, services, rights, districts, sortBy]);
 
   const totalPages = Math.max(1, Math.ceil(sortedHospitals.length / PAGE_SIZE));
   useEffect(() => {

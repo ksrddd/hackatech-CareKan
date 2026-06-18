@@ -1,6 +1,5 @@
 import { Prisma } from '@prisma/client';
 import type { CreateAppointmentRequest } from '../../../shared/api.js';
-import type { ClinicCode } from '../../../shared/types.js';
 import { prisma } from '../prisma.js';
 import { ApiError } from '../errors.js';
 import { toAppointmentDto } from './mappers.js';
@@ -13,20 +12,13 @@ function randomRef(): string {
   return `CK-${out}`;
 }
 
-async function generateBookingCode(): Promise<string> {
+async function generateBookingCode(tx: Prisma.TransactionClient): Promise<string> {
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = randomRef();
-    const exists = await prisma.reserve.findUnique({ where: { bookingCode: code } });
+    const exists = await tx.reserve.findUnique({ where: { bookingCode: code } });
     if (!exists) return code;
   }
   throw new ApiError('ไม่สามารถสร้างรหัสการจองได้ ลองใหม่อีกครั้ง', 500, 'REF_COLLISION');
-}
-
-async function generateQueueNumber(hospitalId: string, clinic: ClinicCode, date: string): Promise<string> {
-  const count = await prisma.reserve.count({
-    where: { hospitalId, schedule: { clinic, date } },
-  });
-  return `A${String(count + 1).padStart(3, '0')}`;
 }
 
 const RESERVE_INCLUDE = {
@@ -44,13 +36,13 @@ export async function createAppointment(userId: string, input: CreateAppointment
     if (slot.isFull || slot.currentBooked >= slot.maxCapacity) {
       throw new ApiError('ช่วงเวลานี้เต็มแล้ว', 409, 'SLOT_FULL');
     }
-    const queueNumber = await generateQueueNumber(slot.hospitalId, slot.clinic as ClinicCode, slot.date);
-    const bookingCode = await generateBookingCode();
+    const bookingCode = await generateBookingCode(tx);
     const willBeFull = slot.currentBooked + 1 >= slot.maxCapacity;
-    await tx.schedule.update({
+    const updatedSlot = await tx.schedule.update({
       where: { id: slot.id },
       data: { currentBooked: { increment: 1 }, isFull: willBeFull },
     });
+    const queueNumber = `A${String(updatedSlot.currentBooked).padStart(3, '0')}`;
     return tx.reserve.create({
       data: {
         bookingCode, userId, hospitalId: slot.hospitalId, scheduleId: slot.id,
