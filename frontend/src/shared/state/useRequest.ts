@@ -74,11 +74,16 @@ interface UseQueryReturn<T> {
 export function useQuery<T>(
   fn: (signal: AbortSignal) => Promise<T>,
   deps: React.DependencyList,
+  enabled: boolean = true,
 ): UseQueryReturn<T> {
-  const [state, setState] = useState<RequestState<T>>({ kind: 'submitting' });
+  const [state, setState] = useState<RequestState<T>>({ kind: 'idle' });
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
+    if (!enabled) {
+      setState({ kind: 'idle' });
+      return;
+    }
     const ctrl = new AbortController();
     setState({ kind: 'submitting' });
     let cancelled = false;
@@ -104,7 +109,7 @@ export function useQuery<T>(
       ctrl.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [...deps, tick]);
+  }, [...deps, tick, enabled]);
 
   return {
     state,

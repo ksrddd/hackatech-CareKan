@@ -11,7 +11,7 @@ export function useHospitals(query: HospitalsQuery) {
 }
 
 export function useHospital(id: string) {
-  return useQuery((signal) => api.getHospital(id, signal), [id]);
+  return useQuery((signal) => api.getHospital(id, signal), [id], id !== '');
 }
 
 export function useTimeSlots(hospitalId: string, date: string, clinic: ClinicCode | '') {
