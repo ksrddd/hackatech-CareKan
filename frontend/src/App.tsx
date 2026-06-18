@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Link, Route, Routes } from 'react-router-dom';
 import { AdminLayout } from './components/AdminLayout';
 import { CitizenLayout } from './components/CitizenLayout';
+import { GuestRoute } from './components/GuestRoute';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AuthProvider } from './lib/auth';
 import { ElderlyModeProvider } from './lib/elderlyMode';
@@ -61,8 +62,10 @@ export function App() {
           <Routes>
               <Route element={<CitizenLayout />}>
                 <Route index element={<Landing />} />
-                <Route path="login" element={<Login />} />
-                <Route path="register" element={<Register />} />
+                <Route element={<GuestRoute />}>
+                  <Route path="login" element={<Login />} />
+                  <Route path="register" element={<Register />} />
+                </Route>
                 <Route path="search" element={<HospitalSearch />} />
                 <Route path="hospitals/:id" element={<HospitalDetail />} />
                 <Route path="user-flow" element={<UserFlow />} />
