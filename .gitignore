@@ -4,3 +4,7 @@
 
 .claude/
 docs/
+.vscode/
+.idea/
+*.log
+reference/
