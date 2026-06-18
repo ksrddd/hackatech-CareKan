@@ -1,11 +1,10 @@
 import { z } from 'zod';
-import { isThaiNationalId } from '../../../shared/nationalId';
+import { isThaiNationalId } from '../../../shared/nationalId.js';
 
 const serviceType = z.enum(['opd','new_patient','checkup','follow_up','lab','medication','elderly']);
 const clinicCode = z.enum(['med','surg','ped','ob','ortho','eye','ent','dent','skin','ncd','psych']);
 const sex = z.enum(['male','female','unspecified']);
 const insuranceRight = z.enum(['uc','sso','csmbs','self_pay']);
-const status = z.enum(['pending','confirmed','checked_in','in_progress','completed','cancelled','no_show']);
 const zone = z.enum(['inner','north','south','east','thon_north','thon_south']);
 
 export const loginSchema = z.object({
@@ -48,11 +47,3 @@ export const createAppointmentSchema = z.object({
   reason: z.string().default(''),
   slotId: z.string().min(1),
 });
-
-export const adminQuerySchema = z.object({
-  hospitalId: z.string().min(1),
-  clinic: clinicCode.optional(),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-});
-
-export const updateStatusSchema = z.object({ status });
