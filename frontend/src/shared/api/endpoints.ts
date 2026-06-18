@@ -1,4 +1,11 @@
 import type {
+  ApiKeyRegenerateResponse,
+  ApiKeyRequestForm,
+  ApiKeyRequestSubmittedResponse,
+  ApiKeyRequestsResponse,
+  ApiKeyResponse,
+  ApiKeyVerifyResponse,
+  ApiKeysResponse,
   AppointmentResponse,
   CreateAppointmentRequest,
   HospitalDetailResponse,
@@ -13,7 +20,7 @@ import type {
   TimeSlotsQuery,
   TimeSlotsResponse,
 } from '../../../../shared/api';
-import { apiFetch } from './client';
+import { apiFetch, getAuthToken } from './client';
 
 export const api = {
   login: (body: LoginRequest, signal?: AbortSignal) =>
@@ -63,4 +70,64 @@ export const api = {
       path: `/appointments/${encodeURIComponent(id)}`,
       signal,
     }),
+
+  submitApiKeyRequest: (body: ApiKeyRequestForm, signal?: AbortSignal) =>
+    apiFetch<ApiKeyRequestSubmittedResponse, ApiKeyRequestForm>({
+      method: 'POST',
+      path: '/api-keys/requests',
+      body,
+      signal,
+    }),
+
+  listMyApiKeyRequests: (signal?: AbortSignal) =>
+    apiFetch<ApiKeyRequestsResponse>({ method: 'GET', path: '/api-keys/requests', signal }),
+
+  verifyApiKeyEmail: (token: string, signal?: AbortSignal) =>
+    apiFetch<ApiKeyVerifyResponse, { token: string }>({
+      method: 'POST',
+      path: '/api-keys/verify',
+      body: { token },
+      signal,
+    }),
+
+  listMyApiKeys: (signal?: AbortSignal) =>
+    apiFetch<ApiKeysResponse>({ method: 'GET', path: '/api-keys', signal }),
+
+  revokeApiKey: (id: string, signal?: AbortSignal) =>
+    apiFetch<ApiKeyResponse>({
+      method: 'POST',
+      path: `/api-keys/${encodeURIComponent(id)}/revoke`,
+      signal,
+    }),
+
+  regenerateApiKey: (id: string, signal?: AbortSignal) =>
+    apiFetch<ApiKeyRegenerateResponse>({
+      method: 'POST',
+      path: `/api-keys/${encodeURIComponent(id)}/regenerate`,
+      signal,
+    }),
+
+  // Download user's own request as Excel receipt — uses raw fetch because
+  // the response is binary and we need the browser file-save dialog.
+  downloadMyApiKeyRequestExcel: async (id: string): Promise<void> => {
+    const token = getAuthToken();
+    const res = await fetch(`/api/api-keys/requests/${encodeURIComponent(id)}/export`, {
+      method: 'GET',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: 'include',
+    });
+    if (!res.ok) {
+      const msg = await res.text().catch(() => res.statusText);
+      throw new Error(msg || 'ดาวน์โหลดไฟล์ไม่สำเร็จ');
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `api-key-request-${id}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  },
 };

@@ -47,3 +47,41 @@ export const createAppointmentSchema = z.object({
   reason: z.string().default(''),
   slotId: z.string().min(1),
 });
+
+const driveUrl = z
+  .string()
+  .trim()
+  .regex(
+    /^https?:\/\/(?:drive|docs)\.google\.com\/[^\s]+$/i,
+    'ลิงก์ต้องเป็น https://drive.google.com/... หรือ https://docs.google.com/...',
+  );
+
+export const apiKeyRequestFormSchema = z.object({
+  organizationName: z.string().trim().min(2, 'กรุณาระบุชื่อโรงพยาบาล/หน่วยงาน'),
+  staffFullName: z.string().trim().min(2, 'กรุณาระบุชื่อ-นามสกุลเจ้าหน้าที่'),
+  position: z.string().trim().min(2, 'กรุณาระบุตำแหน่ง/แผนก'),
+  organizationEmail: z
+    .string()
+    .trim()
+    .email('อีเมลหน่วยงานไม่ถูกต้อง')
+    .refine(
+      (v) => !/@(gmail|hotmail|outlook|yahoo|icloud|live)\.com$/i.test(v),
+      'กรุณาใช้อีเมลของหน่วยงาน (ไม่ใช่อีเมลส่วนตัว)',
+    ),
+  contactPhone: z
+    .string()
+    .trim()
+    .regex(/^[0-9+\-\s()]{6,20}$/, 'เบอร์โทรไม่ถูกต้อง'),
+  referenceNumber: z.string().trim().max(120).optional(),
+  purpose: z.string().trim().min(10, 'กรุณาระบุวัตถุประสงค์โดยละเอียด (อย่างน้อย 10 ตัวอักษร)'),
+  driveLinks: z
+    .array(driveUrl)
+    .min(1, 'กรุณาวางลิงก์ Google Drive อย่างน้อย 1 รายการ')
+    .max(10, 'แนบลิงก์ได้สูงสุด 10 รายการต่อคำขอ'),
+});
+
+export type ApiKeyRequestFormInput = z.infer<typeof apiKeyRequestFormSchema>;
+
+export const apiKeyVerifySchema = z.object({
+  token: z.string().min(20, 'โทเคนยืนยันไม่ถูกต้อง'),
+});

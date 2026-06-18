@@ -150,3 +150,40 @@ export interface Appointment {
   status: AppointmentStatus;
   createdAt: string;
 }
+
+// ─── API key issuance ──────────────────────────────────────────────
+
+export type ApiKeyRequestStatus =
+  | 'pending_email'
+  | 'email_verified'
+  | 'approved'
+  | 'rejected'
+  | 'revoked';
+
+export type ApiKeyScope = 'read_queue';
+
+export interface ApiKeyRequestDto {
+  id: string;
+  organizationName: string;
+  staffFullName: string;
+  position: string;
+  organizationEmail: string;
+  contactPhone: string;
+  referenceNumber: string | null;
+  purpose: string;
+  driveLinks: string[];
+  status: ApiKeyRequestStatus;
+  rejectedReason: string | null;
+  createdAt: string;
+  verifiedAt: string | null;
+}
+
+export interface ApiKeyDto {
+  id: string;
+  prefix: string;
+  scope: ApiKeyScope;
+  organizationName: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+}

@@ -1,4 +1,5 @@
 import { BrowserRouter, Link, Route, Routes } from 'react-router-dom';
+import { AuthRoute } from './components/AuthRoute';
 import { CitizenLayout } from './components/CitizenLayout';
 import { GuestRoute } from './components/GuestRoute';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -14,6 +15,7 @@ import { Login } from './pages/Login';
 import { MyAppointments } from './pages/MyAppointments';
 import { Profile } from './pages/Profile';
 import { Register } from './pages/Register';
+import { RequestApiKey } from './pages/RequestApiKey';
 
 function NotFound() {
   return (
@@ -53,6 +55,10 @@ export function App() {
                 <Route path="book" element={<BookAppointment />} />
                 <Route path="book/success/:id" element={<BookSuccess />} />
                 <Route path="profile" element={<Profile />} />
+              </Route>
+
+              <Route element={<AuthRoute />}>
+                <Route path="request-api-key" element={<RequestApiKey />} />
               </Route>
             </Route>
 
