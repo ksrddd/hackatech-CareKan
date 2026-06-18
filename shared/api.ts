@@ -3,8 +3,6 @@
 // without implementing it server-side is the #1 hackathon bug.
 
 import type {
-  ApiKeyDto,
-  ApiKeyRequestDto,
   Appointment,
   ClinicCode,
   Hospital,
@@ -100,7 +98,7 @@ export interface MyAppointmentsResponse {
   history: Appointment[];
 }
 
-// ─── API key issuance ──────────────────────────────────────────────
+// ─── API key request form ──────────────────────────────────────────
 
 export interface ApiKeyRequestForm {
   organizationName: string;
@@ -108,40 +106,10 @@ export interface ApiKeyRequestForm {
   position: string;
   organizationEmail: string;
   contactPhone: string;
-  referenceNumber?: string;
   purpose: string;
   driveLinks: string[];
 }
 
-export interface ApiKeyRequestSubmittedResponse {
-  request: ApiKeyRequestDto;
-  devVerificationUrl?: string;
+export interface ApiKeySubmittedResponse {
+  submitted: true;
 }
-
-export interface ApiKeyRequestsResponse {
-  requests: ApiKeyRequestDto[];
-}
-
-export interface ApiKeyVerifyResponse {
-  request: ApiKeyRequestDto;
-  plaintextKey: string;
-  apiKey: ApiKeyDto;
-}
-
-export interface ApiKeysResponse {
-  apiKeys: ApiKeyDto[];
-}
-
-export interface ApiKeyResponse {
-  apiKey: ApiKeyDto;
-}
-
-export interface ApiKeyRegenerateResponse {
-  apiKey: ApiKeyDto;
-  plaintextKey: string;
-}
-
-export interface QueueAllResponse {
-  appointments: Appointment[];
-}
-
