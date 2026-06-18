@@ -4,7 +4,6 @@
 
 .claude/*
 docs/*
-!docs/superpowers/
 .vscode/*
 .idea/*
 *.log
