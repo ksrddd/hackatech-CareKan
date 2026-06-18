@@ -1,3 +1,6 @@
 
 # Git-Bash crash dumps
 *.stackdump
+
+.claude/
+docs/
