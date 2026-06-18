@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import { asyncHandler } from '../errors.js';
 import { authGuard } from '../middleware/auth.js';
+import { hospitalKeyAuth } from '../middleware/hospitalKeyAuth.js';
 import * as auth from '../controllers/auth.controller.js';
 import * as hospital from '../controllers/hospital.controller.js';
 import * as appt from '../controllers/appointment.controller.js';
 import * as apiKey from '../controllers/apiKey.controller.js';
+import * as hospitalReserve from '../controllers/hospitalReserve.controller.js';
 
 export const router = Router();
 
@@ -24,4 +26,14 @@ router.get('/appointments/:id', authGuard, asyncHandler(appt.detail));
 // ── API key request form (citizen-facing) ─────────────────────────
 router.post('/api-keys/requests', authGuard, asyncHandler(apiKey.submit));
 
-// ── Hospital API (key-protected) — added in Task 7 ───────────────
+// ── Hospital API (hospital key-protected) ─────────────────────────
+router.post(
+  '/hospital/reserves',
+  asyncHandler(hospitalKeyAuth),
+  asyncHandler(hospitalReserve.createReserve),
+);
+router.patch(
+  '/hospital/reserves/:id/status',
+  asyncHandler(hospitalKeyAuth),
+  asyncHandler(hospitalReserve.updateReserveStatus),
+);
