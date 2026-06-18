@@ -118,9 +118,15 @@ export function Register() {
         return;
       }
     }
-    if (step === 3 && !/^[0-9-]{9,12}$/.test(form.phone)) {
-      setError('โปรดกรอกเบอร์โทรศัพท์ที่ถูกต้อง');
-      return;
+    if (step === 3) {
+      if (!/^[0-9-]{9,12}$/.test(form.phone)) {
+        setError('โปรดกรอกเบอร์โทรศัพท์ที่ถูกต้อง');
+        return;
+      }
+      if (!form.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+        setError('โปรดกรอกอีเมลที่ถูกต้อง');
+        return;
+      }
     }
     if (step === 4) {
       if (form.password.length < 8) {
@@ -313,7 +319,7 @@ export function Register() {
               </div>
               <div>
                 <label htmlFor="email" className="block font-semibold mb-1">
-                  อีเมล
+                  อีเมล <span className="text-gov-err-ink">*</span>
                 </label>
                 <input
                   id="email"

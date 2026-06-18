@@ -287,6 +287,44 @@ export async function runSeed(prisma: PrismaClient): Promise<void> {
     },
   });
 
+  // Extra patient users for today's admin queue
+  const queuePatients = [
+    { nationalId: '1000000000001', firstName: 'ประพันธ์', lastName: 'กิจสมบูรณ์', email: 'q1@example.com', sex: 'male' as const },
+    { nationalId: '1000000000002', firstName: 'จินตนา', lastName: 'มณีรัตน์', email: 'q2@example.com', sex: 'female' as const },
+    { nationalId: '1000000000003', firstName: 'สมหมาย', lastName: 'ทองดี', email: 'q3@example.com', sex: 'male' as const },
+    { nationalId: '1000000000004', firstName: 'พิน', lastName: 'ลิมปิยากร', email: 'q4@example.com', sex: 'female' as const },
+    { nationalId: '1000000000005', firstName: 'ธีรพงษ์', lastName: 'สุขสวัสดิ์', email: 'q5@example.com', sex: 'male' as const },
+    { nationalId: '1000000000006', firstName: 'มาลี', lastName: 'ภูมิรักษ์', email: 'q6@example.com', sex: 'female' as const },
+    { nationalId: '1000000000007', firstName: 'อำนาจ', lastName: 'วงศ์สุวรรณ', email: 'q7@example.com', sex: 'male' as const },
+    { nationalId: '1000000000009', firstName: 'ชัยวัฒน์', lastName: 'กาญจนพิบูลย์', email: 'q9@example.com', sex: 'male' as const },
+    { nationalId: '1000000000010', firstName: 'สุดา', lastName: 'ประเสริฐกุล', email: 'q10@example.com', sex: 'female' as const },
+    { nationalId: '1000000000011', firstName: 'วีระ', lastName: 'คงสมบัติ', email: 'q11@example.com', sex: 'male' as const },
+    { nationalId: '1000000000012', firstName: 'นภา', lastName: 'รุ่งโรจน์', email: 'q12@example.com', sex: 'female' as const },
+  ];
+  const queueUserIds: Record<string, string> = {};
+  for (const p of queuePatients) {
+    const u = await prisma.user.upsert({
+      where: { nationalId: p.nationalId },
+      update: {},
+      create: {
+        nationalId: p.nationalId,
+        username: p.nationalId,
+        firstName: p.firstName,
+        lastName: p.lastName,
+        phoneNumber: '0800000000',
+        email: p.email,
+        password: pwd,
+        insuranceRight: 'uc',
+        role: 'citizen',
+        birthDate: '1970-01-01',
+        sex: p.sex,
+        primaryHospitalId: 'klang',
+        consentAt: new Date(),
+      },
+    });
+    queueUserIds[p.nationalId] = u.id;
+  }
+
   // 4. Demo reserves for the citizen (2 upcoming, 3 history) — dates relative to today.
   const reserves: SeedReserve[] = [
     {
@@ -393,6 +431,69 @@ export async function runSeed(prisma: PrismaClient): Promise<void> {
     });
     await prisma.schedule.update({
       where: { id: schedule.id },
+      data: { currentBooked: { increment: 1 } },
+    });
+  }
+
+  // 5. Today's admin queue: ~12 reserves for klang/med so the admin dashboard is non-empty on a fresh DB.
+  interface QueueRow {
+    bookingCode: string;
+    nationalId: string | null; // null = reuse citizen
+    startTime: string;
+    endTime: string;
+    queueNumber: string;
+    status: string;
+    purpose: string;
+    reason: string;
+    checkedInAt: string | null;
+  }
+  const todayQueue: QueueRow[] = [
+    { bookingCode: 'CK-Q0381X', nationalId: '1000000000001', startTime: '08:30', endTime: '09:00', queueNumber: 'A038', status: 'in_progress',  purpose: 'follow_up', reason: 'เบาหวาน ติดตามผลเลือด',              checkedInAt: base + 'T07:58:00Z' },
+    { bookingCode: 'CK-Q0391X', nationalId: '1000000000002', startTime: '08:30', endTime: '09:00', queueNumber: 'A039', status: 'checked_in',   purpose: 'follow_up', reason: 'ความดันสูง',                         checkedInAt: base + 'T08:05:00Z' },
+    { bookingCode: 'CK-Q0401X', nationalId: '1000000000003', startTime: '08:30', endTime: '09:00', queueNumber: 'A040', status: 'checked_in',   purpose: 'checkup',   reason: 'ตรวจสุขภาพประจำปี',                  checkedInAt: base + 'T08:14:00Z' },
+    { bookingCode: 'CK-Q0411X', nationalId: '1000000000004', startTime: '08:30', endTime: '09:00', queueNumber: 'A041', status: 'no_show',      purpose: 'follow_up', reason: 'ปวดข้อเรื้อรัง',                     checkedInAt: null },
+    { bookingCode: 'CK-Q0421X', nationalId: '1000000000005', startTime: '09:00', endTime: '09:30', queueNumber: 'A042', status: 'checked_in',   purpose: 'follow_up', reason: 'โรคไต ติดตาม creatinine',            checkedInAt: base + 'T08:31:00Z' },
+    { bookingCode: 'CK-Q0431X', nationalId: '1000000000006', startTime: '09:00', endTime: '09:30', queueNumber: 'A043', status: 'checked_in',   purpose: 'opd',       reason: 'อาการเหนื่อยง่าย',                   checkedInAt: base + 'T08:35:00Z' },
+    { bookingCode: 'CK-Q0441X', nationalId: '1000000000007', startTime: '09:00', endTime: '09:30', queueNumber: 'A044', status: 'confirmed',    purpose: 'follow_up', reason: 'นัดต่อเนื่อง',                        checkedInAt: null },
+    { bookingCode: 'CK-Q0451X', nationalId: null,            startTime: '09:00', endTime: '09:30', queueNumber: 'A045', status: 'confirmed',    purpose: 'follow_up', reason: 'ความดันสูง ติดตาม',                   checkedInAt: null },
+    { bookingCode: 'CK-Q0461X', nationalId: '1000000000009', startTime: '09:30', endTime: '10:00', queueNumber: 'A046', status: 'confirmed',    purpose: 'follow_up', reason: 'นัดต่อเนื่อง',                        checkedInAt: null },
+    { bookingCode: 'CK-Q0471X', nationalId: '1000000000010', startTime: '09:30', endTime: '10:00', queueNumber: 'A047', status: 'checked_in',   purpose: 'follow_up', reason: 'โรคหัวใจ ติดตาม',                    checkedInAt: base + 'T08:40:00Z' },
+    { bookingCode: 'CK-Q0481X', nationalId: '1000000000011', startTime: '10:00', endTime: '10:30', queueNumber: 'A048', status: 'confirmed',    purpose: 'opd',       reason: 'ปวดท้อง',                            checkedInAt: null },
+    { bookingCode: 'CK-Q0491X', nationalId: '1000000000012', startTime: '10:00', endTime: '10:30', queueNumber: 'A049', status: 'confirmed',    purpose: 'follow_up', reason: 'รับยาเรื้อรัง',                      checkedInAt: null },
+  ];
+
+  for (const q of todayQueue) {
+    const ownerId = q.nationalId === null ? citizen.id : queueUserIds[q.nationalId] ?? citizen.id;
+    const sched = await prisma.schedule.upsert({
+      where: { slot_identity: { hospitalId: 'klang', clinic: 'med', date: base, startTime: q.startTime } },
+      update: {},
+      create: {
+        hospitalId: 'klang',
+        clinic: 'med',
+        date: base,
+        startTime: q.startTime,
+        endTime: q.endTime,
+        maxCapacity: 6,
+        currentBooked: 0,
+      },
+    });
+    await prisma.reserve.upsert({
+      where: { bookingCode: q.bookingCode },
+      update: {},
+      create: {
+        bookingCode: q.bookingCode,
+        userId: ownerId,
+        hospitalId: 'klang',
+        scheduleId: sched.id,
+        purpose: q.purpose as never,
+        reason: q.reason,
+        status: q.status as never,
+        queueNumber: q.queueNumber,
+        checkedInAt: q.checkedInAt ? new Date(q.checkedInAt) : null,
+      },
+    });
+    await prisma.schedule.update({
+      where: { id: sched.id },
       data: { currentBooked: { increment: 1 } },
     });
   }
