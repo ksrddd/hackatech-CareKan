@@ -1,5 +1,4 @@
-import { useMemo } from 'react';
-import { generateSlots } from '@/lib/mockData';
+import { useTimeSlots } from '@/lib/hospitals';
 import type { ClinicCode, TimeSlot } from '@/lib/types';
 
 interface TimeSlotGridProps {
@@ -17,10 +16,25 @@ export function TimeSlotGrid({
   selectedSlotId,
   onSelect,
 }: TimeSlotGridProps) {
-  const slots = useMemo(
-    () => generateSlots(hospitalId, clinic, date),
-    [hospitalId, clinic, date],
-  );
+  const { state } = useTimeSlots(hospitalId, date, clinic);
+
+  if (state.kind === 'submitting') {
+    return (
+      <p className="text-sm text-gray-500 py-4 text-center">กำลังโหลดช่วงเวลา…</p>
+    );
+  }
+
+  if (state.kind === 'error') {
+    return (
+      <p className="text-sm text-gov-err-ink py-4 text-center">
+        โหลดช่วงเวลาไม่สำเร็จ: {state.error.message}
+      </p>
+    );
+  }
+
+  if (state.kind !== 'success') return null;
+
+  const slots = state.data;
   const morning = slots.filter((s) => Number(s.startTime.split(':')[0]) < 12);
   const afternoon = slots.filter((s) => Number(s.startTime.split(':')[0]) >= 12);
 

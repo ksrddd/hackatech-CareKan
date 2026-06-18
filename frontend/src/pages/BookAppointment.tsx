@@ -1,15 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { BookingStepper } from '@/components/BookingStepper';
 import { DateGrid } from '@/components/DateGrid';
 import { TimeSlotGrid } from '@/components/TimeSlotGrid';
 import { useAuth } from '@/lib/auth';
-import { useBookings } from '@/lib/bookingsStore';
+import { useCreateAppointment } from '@/lib/appointments';
 import {
   formatBuddhistDate,
   formatTimeRange,
 } from '@/lib/format';
-import { DEFAULT_HOSPITAL, HOSPITALS, HOSPITAL_CLINICS } from '@/lib/mockData';
+import { useHospital, useHospitals } from '@/lib/hospitals';
 import {
   clinicLabel,
   insuranceRightLabel,
@@ -33,13 +33,16 @@ const PURPOSE_OPTIONS: { value: ServiceType; icon: string; description: string }
 export function BookAppointment() {
   const { user } = useAuth();
   const [search] = useSearchParams();
-  const { createBooking } = useBookings();
+  const create = useCreateAppointment();
   const navigate = useNavigate();
 
-  const initialHospital = search.get('hospital') ?? DEFAULT_HOSPITAL.id;
+  const { state: hospitalsState } = useHospitals({});
+
+  // Determine the initial hospitalId from URL param; fall back once hospitals load
+  const urlHospital = search.get('hospital');
 
   const [step, setStep] = useState<Step>(1);
-  const [hospitalId, setHospitalId] = useState<string>(initialHospital);
+  const [hospitalId, setHospitalId] = useState<string>(urlHospital ?? '');
   const [clinic, setClinic] = useState<ClinicCode>('med');
   const [purpose, setPurpose] = useState<ServiceType>('follow_up');
   const [reason, setReason] = useState('');
@@ -47,11 +50,21 @@ export function BookAppointment() {
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const hospital = useMemo(
-    () => HOSPITALS.find((h) => h.id === hospitalId) ?? DEFAULT_HOSPITAL,
-    [hospitalId],
-  );
-  const availableClinics = HOSPITAL_CLINICS[hospital.id] ?? ['med'];
+  // Set hospitalId to first hospital once loaded (if not supplied by URL)
+  useEffect(() => {
+    if (!hospitalId && hospitalsState.kind === 'success' && hospitalsState.data.length > 0) {
+      const first = hospitalsState.data[0];
+      if (first) setHospitalId(first.id);
+    }
+  }, [hospitalId, hospitalsState]);
+
+  const { state: hospitalDetailState } = useHospital(hospitalId);
+
+  const hospitals = hospitalsState.kind === 'success' ? hospitalsState.data : [];
+  const hospital =
+    hospitalDetailState.kind === 'success' ? hospitalDetailState.data.hospital : null;
+  const availableClinics: ClinicCode[] =
+    hospitalDetailState.kind === 'success' ? hospitalDetailState.data.clinics : ['med'];
 
   useEffect(() => {
     if (!availableClinics.includes(clinic)) {
@@ -84,27 +97,22 @@ export function BookAppointment() {
     }
   }
 
-  function confirm() {
-    if (!user || !selectedDate || !selectedSlot) return;
-    const created = createBooking({
-      bookingRef: `CK-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
-      userId: user.id,
-      userFullName: user.fullName,
-      hospitalId: hospital.id,
+  async function confirm() {
+    if (!user || !selectedDate || !selectedSlot || !hospitalId) return;
+    setError(null);
+    const appt = await create.run({
+      hospitalId,
       clinic,
       purpose,
       reason,
-      date: selectedDate,
-      startTime: selectedSlot.startTime,
-      endTime: selectedSlot.endTime,
-      queueNumber: `A${String(50 + Math.floor(Math.random() * 50)).padStart(3, '0')}`,
-      status: 'confirmed',
-      checkedInAt: null,
+      slotId: selectedSlot.id,
     });
-    navigate(`/book/success/${created.id}`, { replace: true });
+    if (appt) navigate(`/book/success/${appt.id}`);
   }
 
   if (!user) return <Navigate to="/login" replace />;
+
+  const submitting = create.state.kind === 'submitting';
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 pb-12">
@@ -130,6 +138,11 @@ export function BookAppointment() {
           {error}
         </div>
       )}
+      {create.state.kind === 'error' && (
+        <div className="mb-4 border-l-[6px] border-gov-err-ink bg-gov-err-bg text-gov-err-ink p-3 text-sm">
+          {create.state.error.message}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5">
         <div>
@@ -139,38 +152,48 @@ export function BookAppointment() {
                 <h2 className="text-lg font-semibold pb-2 mb-3 border-b border-gov-border">
                   1.1 เลือกโรงพยาบาล
                 </h2>
-                <ul className="grid gap-2 list-none p-0 m-0">
-                  {HOSPITALS.map((h) => {
-                    const selected = h.id === hospitalId;
-                    return (
-                      <li key={h.id}>
-                        <label
-                          className={`flex gap-3 items-start border-2 p-3 cursor-pointer transition-colors ${
-                            selected
-                              ? 'border-gov-primary bg-gov-primary-tint'
-                              : 'border-gov-border bg-white hover:border-gov-primary hover:bg-gov-primary-tint'
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name="hospital"
-                            checked={selected}
-                            onChange={() => setHospitalId(h.id)}
-                            className="mt-1 scale-110 accent-gov-primary"
-                          />
-                          <span>
-                            <span className="block font-semibold">
-                              {h.shortName}
+                {hospitalsState.kind === 'submitting' && (
+                  <p className="text-sm text-gray-500">กำลังโหลด…</p>
+                )}
+                {hospitalsState.kind === 'error' && (
+                  <p className="text-sm text-gov-err-ink">
+                    โหลดรายชื่อโรงพยาบาลไม่สำเร็จ: {hospitalsState.error.message}
+                  </p>
+                )}
+                {hospitalsState.kind === 'success' && (
+                  <ul className="grid gap-2 list-none p-0 m-0">
+                    {hospitals.map((h) => {
+                      const selected = h.id === hospitalId;
+                      return (
+                        <li key={h.id}>
+                          <label
+                            className={`flex gap-3 items-start border-2 p-3 cursor-pointer transition-colors ${
+                              selected
+                                ? 'border-gov-primary bg-gov-primary-tint'
+                                : 'border-gov-border bg-white hover:border-gov-primary hover:bg-gov-primary-tint'
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="hospital"
+                              checked={selected}
+                              onChange={() => setHospitalId(h.id)}
+                              className="mt-1 scale-110 accent-gov-primary"
+                            />
+                            <span>
+                              <span className="block font-semibold">
+                                {h.shortName}
+                              </span>
+                              <span className="block text-sm text-gray-600 mt-0.5">
+                                {h.address} · ห่าง {h.mockDistanceKm.toFixed(1)} กม.
+                              </span>
                             </span>
-                            <span className="block text-sm text-gray-600 mt-0.5">
-                              {h.address} · ห่าง {h.mockDistanceKm.toFixed(1)} กม.
-                            </span>
-                          </span>
-                        </label>
-                      </li>
-                    );
-                  })}
-                </ul>
+                          </label>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
               </section>
 
               <section className="bg-white border border-gov-border p-5 mb-5">
@@ -274,7 +297,7 @@ export function BookAppointment() {
                   2.1 เลือกวันที่ต้องการเข้ารับบริการ
                 </h2>
                 <DateGrid
-                  hospitalId={hospital.id}
+                  hospitalId={hospitalId}
                   clinic={clinic}
                   selectedDate={selectedDate}
                   onSelect={(d) => {
@@ -293,7 +316,7 @@ export function BookAppointment() {
                     </span>
                   </h2>
                   <TimeSlotGrid
-                    hospitalId={hospital.id}
+                    hospitalId={hospitalId}
                     clinic={clinic}
                     date={selectedDate}
                     selectedSlotId={selectedSlot?.id ?? null}
@@ -320,7 +343,9 @@ export function BookAppointment() {
                   {insuranceRightLabel[user.insuranceRight]}
                 </dd>
                 <dt className="text-gray-500">โรงพยาบาล</dt>
-                <dd className="font-medium">{hospital.shortName}</dd>
+                <dd className="font-medium">
+                  {hospital ? hospital.shortName : hospitalId}
+                </dd>
                 <dt className="text-gray-500">คลินิก</dt>
                 <dd className="font-medium">{clinicLabel[clinic]}</dd>
                 <dt className="text-gray-500">วัตถุประสงค์</dt>
@@ -361,9 +386,13 @@ export function BookAppointment() {
               สรุปการจอง
             </h3>
             <p>
-              <strong>{hospital.shortName}</strong>
+              <strong>
+                {hospital ? hospital.shortName : hospitalId || '—'}
+              </strong>
               <br />
-              <span className="text-sm text-gray-500">{hospital.address}</span>
+              <span className="text-sm text-gray-500">
+                {hospital ? hospital.address : ''}
+              </span>
             </p>
             <hr className="my-3 border-gov-border" />
             <p>
@@ -435,9 +464,10 @@ export function BookAppointment() {
           <button
             type="button"
             onClick={confirm}
-            className="px-5 py-2.5 font-semibold text-white bg-gov-primary border-2 border-gov-primary-dark hover:bg-gov-primary-dark"
+            disabled={submitting}
+            className="px-5 py-2.5 font-semibold text-white bg-gov-primary border-2 border-gov-primary-dark hover:bg-gov-primary-dark disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            ยืนยันการจอง
+            {submitting ? 'กำลังบันทึก…' : 'ยืนยันการจอง'}
           </button>
         )}
       </div>

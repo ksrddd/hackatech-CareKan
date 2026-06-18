@@ -1,13 +1,13 @@
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { QrStub } from '@/components/QrStub';
 import { useAuth } from '@/lib/auth';
-import { useBookings } from '@/lib/bookingsStore';
+import { useAppointment } from '@/lib/appointments';
+import { useHospitals } from '@/lib/hospitals';
 import {
   formatBuddhistDate,
   formatTimeRange,
   maskNationalId,
 } from '@/lib/format';
-import { getHospital } from '@/lib/mockData';
 import {
   clinicLabel,
   insuranceRightLabel,
@@ -16,15 +16,40 @@ import {
 
 export function BookSuccess() {
   const { id } = useParams<{ id: string }>();
-  const { getBooking } = useBookings();
   const { user } = useAuth();
+  const { state: apptState } = useAppointment(id ?? '');
+  const { state: hospitalsState } = useHospitals({});
 
   if (!id) return <Navigate to="/my-appointments" replace />;
   if (!user) return <Navigate to="/login" replace />;
-  const appt = getBooking(id, { requireOwnerUserId: user.id });
-  if (!appt) return <Navigate to="/my-appointments" replace />;
 
-  const hospital = getHospital(appt.hospitalId);
+  if (apptState.kind === 'submitting') {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-6">
+        <p className="text-gray-500">กำลังโหลดข้อมูลนัดหมาย…</p>
+      </div>
+    );
+  }
+
+  if (apptState.kind === 'error') {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-6">
+        <p className="text-gov-err-ink">
+          โหลดข้อมูลนัดหมายไม่สำเร็จ: {apptState.error.message}
+        </p>
+        <Link to="/my-appointments" className="text-blue-800 hover:underline text-sm mt-2 block">
+          กลับหน้านัดของฉัน
+        </Link>
+      </div>
+    );
+  }
+
+  if (apptState.kind !== 'success') return null;
+
+  const appt = apptState.data;
+
+  const hospitals = hospitalsState.kind === 'success' ? hospitalsState.data : [];
+  const hospital = hospitals.find((h) => h.id === appt.hospitalId);
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 pb-12">
