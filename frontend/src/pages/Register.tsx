@@ -2,7 +2,7 @@ import { useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { useRequest } from '@/shared/state/useRequest';
-import { isValidThaiNationalId } from '../../../shared/nationalId';
+import { isThaiNationalId } from '../../../shared/nationalId';
 
 // Off by default so the demo keeps working with a plain 13-digit check.
 // Set VITE_STRICT_NATIONAL_ID=true to enforce the real checksum in production.
@@ -114,7 +114,7 @@ export function Register() {
         setError('เลขบัตรประจำตัวประชาชนต้องเป็นตัวเลข 13 หลัก');
         return;
       }
-      if (STRICT_NATIONAL_ID && !isValidThaiNationalId(form.cid)) {
+      if (STRICT_NATIONAL_ID && !isThaiNationalId(form.cid)) {
         setError('เลขบัตรประจำตัวประชาชนไม่ถูกต้อง');
         return;
       }
