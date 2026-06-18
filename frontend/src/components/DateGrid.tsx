@@ -125,7 +125,7 @@ export function DateGrid({
             cell.isHoliday;
 
           const base =
-            'min-h-[70px] flex flex-col justify-between p-2 text-center text-sm border-b border-gov-border';
+            'min-h-[52px] sm:min-h-[70px] flex flex-col justify-between p-1 sm:p-2 text-center text-sm border-b border-gov-border';
           const sideBorder = (i + 1) % 7 === 0 ? '' : 'border-r';
 
           if (disabled) {

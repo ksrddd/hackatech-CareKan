@@ -21,6 +21,7 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@line/bot-sdk": "^11.0.2",
     "@prisma/client": "^5.22.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",

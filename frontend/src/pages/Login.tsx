@@ -135,10 +135,7 @@ export function Login() {
           </summary>
           <div className="mt-2 space-y-1 text-gray-700">
             <p>
-              ผู้ใช้ทั่วไป: <code className="font-mono">1234567890123</code> · รหัสใดก็ได้ ≥ 4 ตัวอักษร
-            </p>
-            <p>
-              เจ้าหน้าที่: <code className="font-mono">9876543210987</code> · รหัสใดก็ได้ ≥ 4 ตัวอักษร
+              ผู้ใช้ทั่วไป: <code className="font-mono">1234567890123</code> · รหัสผ่าน care1234
             </p>
           </div>
         </details>

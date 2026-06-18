@@ -56,14 +56,14 @@ export function HospitalDetail() {
       </p>
 
       <section className="bg-white border-2 border-gov-ink p-5 mb-5">
-        <div className="flex gap-4 flex-wrap">
-          <div className="w-20 h-20 grid place-items-center bg-gov-primary text-white font-bold text-2xl border-2 border-gov-primary-dark">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 shrink-0 grid place-items-center bg-gov-primary text-white font-bold text-xl sm:text-2xl border-2 border-gov-primary-dark">
             {hospital.code}
           </div>
-          <div className="flex-1 min-w-[240px]">
-            <h1 className="text-2xl font-bold mb-1">{hospital.shortName}</h1>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold mb-1">{hospital.shortName}</h1>
             <p className="text-sm text-gray-600 mb-2">
-              {hospital.address} · {hospital.mockDistanceKm.toFixed(1)} กม. (โดยประมาณ)
+              {hospital.address} · {hospital.mockDistanceKm.toFixed(1)} กม.
             </p>
             <p className="text-sm">
               <span className="inline-block bg-gov-ok-bg text-gov-ok-ink px-2 py-0.5 border border-gov-ok-ink font-semibold">
@@ -72,10 +72,10 @@ export function HospitalDetail() {
               <span className="text-gray-600 ml-2">{hospital.openingHours}</span>
             </p>
           </div>
-          <div className="text-right min-w-[200px]">
+          <div className="sm:text-right shrink-0">
             <Link
               to={`/book?hospital=${hospital.id}`}
-              className="block w-full px-4 py-3 text-center font-bold text-white bg-gov-primary border-2 border-gov-primary-dark hover:bg-gov-primary-dark"
+              className="block px-4 py-3 text-center font-bold text-white bg-gov-primary border-2 border-gov-primary-dark hover:bg-gov-primary-dark"
             >
               จองคิว
             </Link>
@@ -167,9 +167,10 @@ export function HospitalDetail() {
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-blue-800 hover:underline"
+                className="inline-flex items-center gap-1.5 text-blue-800 hover:underline"
               >
-                🧭 เปิดใน Google Maps (นำทาง)
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M8 2a4 4 0 0 0-4 4c0 3 4 8 4 8s4-5 4-8a4 4 0 0 0-4-4z"/><circle cx="8" cy="6" r="1.5" fill="currentColor" stroke="none"/></svg>
+                เปิดใน Google Maps (นำทาง)
               </a>
               <p className="text-gray-500 text-xs">
                 แผนที่จาก Google · ปักหมุดอัตโนมัติจากชื่อและที่อยู่
@@ -181,7 +182,10 @@ export function HospitalDetail() {
             <strong className="block mb-2 pb-2 border-b border-gov-border">
               ติดต่อ
             </strong>
-            <p className="mb-1">📞 {hospital.phone}</p>
+            <p className="mb-1 flex items-center gap-1.5">
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14 10.8c-.2-1-.9-1.7-1.8-1.8l-1.8-.3c-.4-.1-.8.1-1 .5l-.8 1.5c-2-.9-3.5-2.5-4.4-4.4L5.7 5.6c.2-.3.3-.7.2-1.1L5.5 2.7C5.3 1.8 4.7 1.1 3.8 1h-.5C2.1 1 1 2.1 1 3.3c0 6.5 5.3 11.7 11.7 11.7C14 15 15 13.9 15 12.7v-.5c0-.5-.1-.9-.4-1.4z"/></svg>
+                {hospital.phone}
+              </p>
             <p className="text-gray-500 text-xs">
               สอบถามคิวออนไลน์: 1555 (24 ชม.)
             </p>

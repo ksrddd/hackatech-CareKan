@@ -108,7 +108,7 @@ function AppointmentDetailInner({ id }: { id: string }) {
               <QueueStatusBadge status={appt.status} />
             </div>
 
-            <dl className="grid grid-cols-[180px_1fr] gap-x-4 gap-y-2">
+            <dl className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-x-4 gap-y-0.5 sm:gap-y-2 [&>dt]:text-xs [&>dt]:text-gray-400 [&>dt]:uppercase [&>dt]:tracking-wide [&>dt]:pt-3 [&>dt:first-child]:pt-0 [&>dt]:sm:text-base [&>dt]:sm:normal-case [&>dt]:sm:tracking-normal [&>dt]:sm:text-gray-500 [&>dt]:sm:pt-0">
               <dt className="text-gray-500">ผู้รับบริการ</dt>
               <dd className="font-medium">{appt.userFullName}</dd>
               {user && (
@@ -204,7 +204,10 @@ function AppointmentDetailInner({ id }: { id: string }) {
               <strong className="block mb-2 pb-2 border-b border-gov-border">
                 ติดต่อ {hospital.shortName}
               </strong>
-              <p className="mb-1">📞 {hospital.phone}</p>
+              <p className="mb-1 flex items-center gap-1.5">
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14 10.8c-.2-1-.9-1.7-1.8-1.8l-1.8-.3c-.4-.1-.8.1-1 .5l-.8 1.5c-2-.9-3.5-2.5-4.4-4.4L5.7 5.6c.2-.3.3-.7.2-1.1L5.5 2.7C5.3 1.8 4.7 1.1 3.8 1h-.5C2.1 1 1 2.1 1 3.3c0 6.5 5.3 11.7 11.7 11.7C14 15 15 13.9 15 12.7v-.5c0-.5-.1-.9-.4-1.4z"/></svg>
+                {hospital.phone}
+              </p>
               <p className="text-gray-500 text-xs">{hospital.address}</p>
             </div>
           )}

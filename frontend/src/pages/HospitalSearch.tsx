@@ -38,6 +38,7 @@ export function HospitalSearch() {
   const [rights, setRights] = useState<Set<InsuranceRight>>(new Set());
   const [sortBy, setSortBy] = useState<'distance' | 'name'>('distance');
   const [page, setPage] = useState(0);
+  const [filterOpen, setFilterOpen] = useState(false);
   const PAGE_SIZE = 10;
 
   const { state } = useHospitals({});
@@ -131,8 +132,25 @@ export function HospitalSearch() {
         </div>
       </form>
 
+      {/* Mobile filter toggle */}
+      <button
+        type="button"
+        onClick={() => setFilterOpen(v => !v)}
+        className="lg:hidden flex items-center gap-2 mb-3 px-3 py-2 border border-gov-border bg-white text-sm font-semibold text-gov-ink w-full"
+        aria-expanded={filterOpen}
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 4h12M4 8h8M6 12h4"/></svg>
+        ตัวกรอง
+        {(districts.size + zones.size + services.size + rights.size) > 0 && (
+          <span className="ml-auto bg-gov-primary text-white text-xs font-bold px-1.5 py-0.5">
+            {districts.size + zones.size + services.size + rights.size}
+          </span>
+        )}
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={`ml-auto transition-transform ${filterOpen ? 'rotate-180' : ''}`} aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg>
+      </button>
+
       <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-5">
-        <aside className="bg-white border border-gov-border p-4 self-start">
+        <aside className={`bg-white border border-gov-border p-4 self-start ${filterOpen ? '' : 'hidden lg:block'}`}>
           <h2 className="font-bold text-base pb-2 mb-3 border-b border-gov-border">
             ตัวกรอง
           </h2>
@@ -237,7 +255,7 @@ export function HospitalSearch() {
                 onChange={(e) =>
                   setSortBy(e.target.value as 'distance' | 'name')
                 }
-                className="border border-gov-border px-2 py-1"
+                className="border border-gov-border pl-2 pr-7 py-1"
               >
                 <option value="distance">ระยะทาง</option>
                 <option value="name">ตัวอักษร</option>

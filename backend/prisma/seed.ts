@@ -24,9 +24,14 @@ interface GovHospitalRaw {
 const SEED_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 function loadGovHospitals(): GovHospitalRaw[] {
-  const file = path.join(SEED_DIR, '..', 'data', 'seed', 'bangkok_hospitals_gov_all.json');
-  const raw = readFileSync(file, 'utf8').replace(/^﻿/, '');
-  return JSON.parse(raw) as GovHospitalRaw[];
+  try {
+    const file = path.join(SEED_DIR, '..', 'data', 'seed', 'bangkok_hospitals_gov_all.json');
+    const raw = readFileSync(file, 'utf8').replace(/^﻿/, '');
+    return JSON.parse(raw) as GovHospitalRaw[];
+  } catch {
+    console.warn('⚠️  Gov hospitals JSON not found — skipping additional hospitals');
+    return [];
+  }
 }
 
 const BKK_CENTER_LAT = 13.7563;
@@ -216,17 +221,27 @@ export async function runSeed(prisma: PrismaClient): Promise<void> {
     if (!isWeekend(iso)) dates.push(iso);
   }
 
-  for (const h of HOSPITALS) {
-    for (const clinic of CLINICS) {
-      const rows = dates.flatMap((date) =>
+  // Collect all rows first, then insert in chunks to avoid timeout on Railway
+  const scheduleRows = HOSPITALS.flatMap((h) =>
+    CLINICS.flatMap((clinic) =>
+      dates.flatMap((date) =>
         TIME_RANGES.map(([startTime, endTime]) => ({
           hospitalId: h.id, clinic, date, startTime, endTime,
           maxCapacity: 6, currentBooked: 0, isFull: false,
         })),
-      );
-      await prisma.schedule.createMany({ data: rows, skipDuplicates: true });
-    }
+      ),
+    ),
+  );
+
+  const CHUNK = 500;
+  for (let i = 0; i < scheduleRows.length; i += CHUNK) {
+    await prisma.schedule.createMany({
+      data: scheduleRows.slice(i, i + CHUNK),
+      skipDuplicates: true,
+    });
+    console.log(`  Schedules: ${Math.min(i + CHUNK, scheduleRows.length)}/${scheduleRows.length}`);
   }
+  console.log(`✓ ${scheduleRows.length} schedule slots seeded for ${HOSPITALS.length} hospitals`);
 
   // 3. Demo citizen user.
   const pwd = await bcrypt.hash('care1234', 10);

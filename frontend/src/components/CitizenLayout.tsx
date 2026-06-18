@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom';
 import { CitizenHeader } from './CitizenHeader';
+import { FloatingContactButton } from './FloatingContactButton';
 import { GovBar } from './GovBar';
 import { GovFooter } from './GovFooter';
 import { SkipLink } from './SkipLink';
@@ -14,6 +15,7 @@ export function CitizenLayout() {
         <Outlet />
       </main>
       <GovFooter variant="citizen" />
+      <FloatingContactButton />
     </>
   );
 }

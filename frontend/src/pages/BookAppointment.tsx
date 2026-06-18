@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { useLiff } from '@/lib/liff';
 import { BookingStepper } from '@/components/BookingStepper';
 import { DateGrid } from '@/components/DateGrid';
 import { TimeSlotGrid } from '@/components/TimeSlotGrid';
@@ -20,17 +21,42 @@ import {
 
 type Step = 1 | 2 | 3;
 
-const PURPOSE_OPTIONS: { value: ServiceType; icon: string; description: string }[] = [
-  { value: 'opd', icon: '🩺', description: 'ฉันมีอาการบางอย่าง อยากให้แพทย์ตรวจ' },
-  { value: 'new_patient', icon: '📋', description: 'ครั้งแรกที่มา รพ. นี้' },
-  { value: 'follow_up', icon: '🔄', description: 'ตามที่หมอเคยนัดไว้' },
-  { value: 'checkup', icon: '💉', description: 'ตรวจร่างกาย / ตรวจเลือดประจำปี' },
-  { value: 'medication', icon: '💊', description: 'รับยาเรื้อรังที่หมอสั่งไว้' },
-  { value: 'lab', icon: '🧪', description: 'ตรวจเลือดหรือผลแลป' },
+const PURPOSE_OPTIONS: { value: ServiceType; icon: React.ReactNode; description: string }[] = [
+  {
+    value: 'opd',
+    icon: <svg width="20" height="20" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="9"/><path d="M11 7v8M7 11h8"/></svg>,
+    description: 'ฉันมีอาการบางอย่าง อยากให้แพทย์ตรวจ',
+  },
+  {
+    value: 'new_patient',
+    icon: <svg width="20" height="20" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M14 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 2 17.5V19"/><circle cx="8.5" cy="7" r="3.5"/><path d="M17 8v6M14 11h6"/></svg>,
+    description: 'ครั้งแรกที่มา รพ. นี้',
+  },
+  {
+    value: 'follow_up',
+    icon: <svg width="20" height="20" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="9"/><path d="M11 6v5l3 3"/></svg>,
+    description: 'ตามที่หมอเคยนัดไว้',
+  },
+  {
+    value: 'checkup',
+    icon: <svg width="20" height="20" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M19.07 4.93a10 10 0 1 0 0 14.14"/><path d="M12 8v4l2 2"/></svg>,
+    description: 'ตรวจร่างกาย / ตรวจเลือดประจำปี',
+  },
+  {
+    value: 'medication',
+    icon: <svg width="20" height="20" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M10.5 20.5 3.5 13.5a5 5 0 0 1 7.07-7.07l7 7a5 5 0 0 1-7.07 7.07z"/><line x1="8.5" y1="13.5" x2="13.5" y2="8.5"/></svg>,
+    description: 'รับยาเรื้อรังที่หมอสั่งไว้',
+  },
+  {
+    value: 'lab',
+    icon: <svg width="20" height="20" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v8l-4 6a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-4-6V2"/><line x1="6" y1="2" x2="16" y2="2"/><path d="M6 14h10"/></svg>,
+    description: 'ตรวจเลือดหรือผลแลป',
+  },
 ];
 
 export function BookAppointment() {
   const { user } = useAuth();
+  const liff = useLiff();
   const [search] = useSearchParams();
   const create = useCreateAppointment();
   const navigate = useNavigate();
@@ -122,6 +148,22 @@ export function BookAppointment() {
         › จองคิวใหม่
       </p>
       <h1 className="text-2xl font-bold mb-4">จองคิวนัดหมาย</h1>
+
+      {liff.isInLiff && liff.profile && (
+        <div className="mb-4 flex items-center gap-3 bg-[#06C755]/10 border border-[#06C755]/30 px-4 py-3">
+          {liff.profile.pictureUrl && (
+            <img
+              src={liff.profile.pictureUrl}
+              alt={liff.profile.displayName}
+              className="w-10 h-10 rounded-full shrink-0"
+            />
+          )}
+          <div>
+            <p className="text-sm font-semibold text-[#06C755]">เข้าสู่ระบบผ่าน LINE</p>
+            <p className="text-sm text-gray-700">สวัสดี, {liff.profile.displayName}</p>
+          </div>
+        </div>
+      )}
 
       <BookingStepper
         steps={[
@@ -232,36 +274,6 @@ export function BookAppointment() {
 
               <section className="bg-white border border-gov-border p-5 mb-5">
                 <h2 className="text-lg font-semibold pb-2 mb-3 border-b border-gov-border">
-                  เลือกคลินิก / แผนก
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label
-                      htmlFor="clinic"
-                      className="block font-semibold mb-1 text-[0.95rem]"
-                    >
-                      คลินิกที่ต้องการเข้ารับบริการ
-                    </label>
-                    <select
-                      id="clinic"
-                      value={clinic}
-                      onChange={(e) =>
-                        setClinic(e.target.value as ClinicCode)
-                      }
-                      className="w-full px-3 py-2 border-2 border-gray-900 rounded-none"
-                    >
-                      {availableClinics.map((c) => (
-                        <option key={c} value={c}>
-                          {clinicLabel[c]}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </section>
-
-              <section className="bg-white border border-gov-border p-5 mb-5">
-                <h2 className="text-lg font-semibold pb-2 mb-3 border-b border-gov-border">
                   วัตถุประสงค์
                 </h2>
                 <div className="grid sm:grid-cols-2 gap-3 mb-4">
@@ -284,7 +296,7 @@ export function BookAppointment() {
                               : 'border-gov-border bg-white hover:border-gov-primary'
                           }`}
                         >
-                          <span className="text-3xl" aria-hidden="true">
+                          <span className="w-9 h-9 flex items-center justify-center bg-gov-primary-tint border border-gov-border shrink-0 text-gov-primary" aria-hidden="true">
                             {opt.icon}
                           </span>
                           <div>
@@ -369,7 +381,7 @@ export function BookAppointment() {
               <h2 className="text-lg font-semibold pb-2 mb-3 border-b border-gov-border">
                 ตรวจสอบรายละเอียดก่อนยืนยัน
               </h2>
-              <dl className="grid grid-cols-[180px_1fr] gap-x-4 gap-y-2">
+              <dl className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-x-4 gap-y-0.5 sm:gap-y-2 [&>dt]:text-xs [&>dt]:text-gray-400 [&>dt]:uppercase [&>dt]:tracking-wide [&>dt]:pt-3 [&>dt:first-child]:pt-0 [&>dt]:sm:text-base [&>dt]:sm:normal-case [&>dt]:sm:tracking-normal [&>dt]:sm:text-gray-500 [&>dt]:sm:pt-0">
                 <dt className="text-gray-500">ผู้รับบริการ</dt>
                 <dd className="font-medium">{user.fullName}</dd>
                 <dt className="text-gray-500">โรงพยาบาล</dt>

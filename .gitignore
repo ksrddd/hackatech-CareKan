@@ -8,3 +8,5 @@ docs/*
 .idea/*
 *.log
 reference/*
+docker-compose.override.yml
+backend/.env

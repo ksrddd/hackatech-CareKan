@@ -1,21 +1,25 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Link, Route, Routes } from 'react-router-dom';
 import { AuthRoute } from './components/AuthRoute';
 import { CitizenLayout } from './components/CitizenLayout';
 import { GuestRoute } from './components/GuestRoute';
+import { PageLoader } from './components/PageLoader';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AuthProvider } from './lib/auth';
 import { ElderlyModeProvider } from './lib/elderlyMode';
-import { AppointmentDetail } from './pages/AppointmentDetail';
-import { BookAppointment } from './pages/BookAppointment';
-import { BookSuccess } from './pages/BookSuccess';
-import { HospitalDetail } from './pages/HospitalDetail';
-import { HospitalSearch } from './pages/HospitalSearch';
-import { Landing } from './pages/Landing';
-import { Login } from './pages/Login';
-import { MyAppointments } from './pages/MyAppointments';
-import { Profile } from './pages/Profile';
-import { Register } from './pages/Register';
-import { RequestApiKey } from './pages/RequestApiKey';
+
+const Landing         = lazy(() => import('./pages/Landing').then(m => ({ default: m.Landing })));
+const Login           = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
+const Register        = lazy(() => import('./pages/Register').then(m => ({ default: m.Register })));
+const HospitalSearch  = lazy(() => import('./pages/HospitalSearch').then(m => ({ default: m.HospitalSearch })));
+const HospitalDetail  = lazy(() => import('./pages/HospitalDetail').then(m => ({ default: m.HospitalDetail })));
+const MyAppointments  = lazy(() => import('./pages/MyAppointments').then(m => ({ default: m.MyAppointments })));
+const AppointmentDetail = lazy(() => import('./pages/AppointmentDetail').then(m => ({ default: m.AppointmentDetail })));
+const BookAppointment = lazy(() => import('./pages/BookAppointment').then(m => ({ default: m.BookAppointment })));
+const BookSuccess     = lazy(() => import('./pages/BookSuccess').then(m => ({ default: m.BookSuccess })));
+const Profile         = lazy(() => import('./pages/Profile').then(m => ({ default: m.Profile })));
+const RequestApiKey   = lazy(() => import('./pages/RequestApiKey').then(m => ({ default: m.RequestApiKey })));
+
 
 function NotFound() {
   return (
@@ -39,31 +43,33 @@ export function App() {
     <AuthProvider>
       <ElderlyModeProvider>
         <BrowserRouter>
-          <Routes>
-            <Route element={<CitizenLayout />}>
-              <Route index element={<Landing />} />
-              <Route element={<GuestRoute />}>
-                <Route path="login" element={<Login />} />
-                <Route path="register" element={<Register />} />
-              </Route>
-              <Route path="search" element={<HospitalSearch />} />
-              <Route path="hospitals/:id" element={<HospitalDetail />} />
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              <Route element={<CitizenLayout />}>
+                <Route index element={<Landing />} />
+                <Route element={<GuestRoute />}>
+                  <Route path="login" element={<Login />} />
+                  <Route path="register" element={<Register />} />
+                </Route>
+                <Route path="search" element={<HospitalSearch />} />
+                <Route path="hospitals/:id" element={<HospitalDetail />} />
 
-              <Route element={<ProtectedRoute />}>
-                <Route path="my-appointments" element={<MyAppointments />} />
-                <Route path="appointments/:id" element={<AppointmentDetail />} />
-                <Route path="book" element={<BookAppointment />} />
-                <Route path="book/success/:id" element={<BookSuccess />} />
-                <Route path="profile" element={<Profile />} />
+                <Route element={<ProtectedRoute />}>
+                  <Route path="my-appointments" element={<MyAppointments />} />
+                  <Route path="appointments/:id" element={<AppointmentDetail />} />
+                  <Route path="book" element={<BookAppointment />} />
+                  <Route path="book/success/:id" element={<BookSuccess />} />
+                  <Route path="profile" element={<Profile />} />
+                </Route>
+
+                <Route element={<AuthRoute />}>
+                  <Route path="request-api-key" element={<RequestApiKey />} />
+                </Route>
               </Route>
 
-              <Route element={<AuthRoute />}>
-                <Route path="request-api-key" element={<RequestApiKey />} />
-              </Route>
-            </Route>
-
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
         </BrowserRouter>
       </ElderlyModeProvider>
     </AuthProvider>

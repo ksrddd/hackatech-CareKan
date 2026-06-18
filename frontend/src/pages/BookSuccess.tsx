@@ -132,7 +132,10 @@ export function BookSuccess() {
 
       <section className="bg-white border border-gov-border p-5 mb-5">
         <h2 className="text-lg font-semibold pb-2 mb-3 border-b border-gov-border">
-          📋 ก่อนไปอย่าลืม
+          <span className="inline-flex items-center gap-2">
+              <svg width="18" height="18" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
+              ก่อนไปอย่าลืม
+            </span>
         </h2>
         <ul className="space-y-2 text-[0.95rem]">
           <li className="flex gap-3">

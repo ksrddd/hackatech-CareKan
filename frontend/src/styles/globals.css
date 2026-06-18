@@ -50,6 +50,22 @@
   font-display: swap;
 }
 
+/* ── Light theme (default) ── */
+:root {
+  --gov-ink:          #14213d;
+  --gov-yellow:       #f9c80e;
+  --gov-primary:      #1b4d8c;
+  --gov-primary-dark: #143b6e;
+  --gov-primary-tint: #e7eef7;
+  --gov-wait-bg:      #fff4d6;
+  --gov-wait-ink:     #7a4a00;
+  --gov-ok-bg:        #e3f1e1;
+  --gov-ok-ink:       #1f5e22;
+  --gov-err-bg:       #fbe1e1;
+  --gov-err-ink:      #8a1d1d;
+  --gov-border:       #c8ccd2;
+}
+
 @layer base {
   html {
     font-size: 17px;
@@ -58,6 +74,7 @@
     font-family: 'LINE Seed Sans TH', 'Sarabun', 'Noto Sans Thai', system-ui, sans-serif;
     background-color: #f3f4f6;
     color: #111827;
+    transition: background-color 0.2s, color 0.2s;
   }
 }
 
@@ -187,6 +204,17 @@ html.elderly :where(p, li, label, span:not(.qr-corner)) {
 html.elderly :where(a, button, input, select, textarea):focus-visible {
   outline: 4px solid #f9c80e;
   outline-offset: 3px;
+}
+
+@keyframes wobble {
+  0%, 85%, 100% { transform: rotate(0deg); }
+  88%  { transform: rotate(-10deg); }
+  91%  { transform: rotate(10deg); }
+  94%  { transform: rotate(-6deg); }
+  97%  { transform: rotate(6deg); }
+}
+.animate-wobble {
+  animation: wobble 4s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
