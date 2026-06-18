@@ -2,9 +2,9 @@
 # Git-Bash crash dumps
 *.stackdump
 
-.claude/
-docs/
-.vscode/
-.idea/
+.claude/*
+docs/*
+.vscode/*
+.idea/*
 *.log
-reference/
+reference/*
