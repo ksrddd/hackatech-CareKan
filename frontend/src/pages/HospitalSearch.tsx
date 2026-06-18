@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { HospitalCard } from '@/components/HospitalCard';
-import { HOSPITALS } from '@/lib/mockData';
+import { useHospitals } from '@/lib/hospitals';
 import {
   insuranceRightLabel,
   serviceTypeLabel,
@@ -11,9 +11,17 @@ import {
   type Zone,
 } from '@/lib/types';
 
-const ALL_DISTRICTS = Array.from(
-  new Set(HOSPITALS.map((h) => h.district)),
-);
+const ALL_DISTRICTS = [
+  'ป้อมปราบศัตรูพ่าย',
+  'คลองสาน',
+  'บางคอแหลม',
+  'หนองแขม',
+  'บางแค',
+  'บางขุนเทียน',
+  'หนองจอก',
+  'ลาดกระบัง',
+  'ประเวศ',
+];
 
 export function HospitalSearch() {
   const [query, setQuery] = useState('');
@@ -23,24 +31,26 @@ export function HospitalSearch() {
   const [rights, setRights] = useState<Set<InsuranceRight>>(new Set());
   const [sortBy, setSortBy] = useState<'distance' | 'name'>('distance');
 
-  const filtered = useMemo(() => {
-    const q = query.trim();
-    let res = HOSPITALS.filter((h) => {
-      if (districts.size && !districts.has(h.district)) return false;
-      if (zones.size && !zones.has(h.zone)) return false;
-      if (services.size && !h.services.some((s) => services.has(s))) return false;
-      if (rights.size && !h.rightsAccepted.some((r) => rights.has(r))) return false;
-      if (q) {
-        const hay = `${h.name}${h.shortName}${h.district}`;
-        if (!hay.includes(q)) return false;
-      }
-      return true;
-    });
+  const apiQuery = useMemo(
+    () => ({
+      q: query.trim() || undefined,
+      district: districts.size === 1 ? [...districts][0] : undefined,
+      zone: zones.size === 1 ? [...zones][0] : undefined,
+      service: services.size === 1 ? [...services][0] : undefined,
+      right: rights.size === 1 ? [...rights][0] : undefined,
+    }),
+    [query, districts, zones, services, rights],
+  );
+
+  const { state } = useHospitals(apiQuery);
+
+  const sortedHospitals = useMemo(() => {
+    if (state.kind !== 'success') return [];
+    const list = [...state.data];
     if (sortBy === 'distance')
-      res = res.slice().sort((a, b) => a.mockDistanceKm - b.mockDistanceKm);
-    else res = res.slice().sort((a, b) => a.shortName.localeCompare(b.shortName));
-    return res;
-  }, [query, districts, zones, services, rights, sortBy]);
+      return list.sort((a, b) => a.mockDistanceKm - b.mockDistanceKm);
+    return list.sort((a, b) => a.shortName.localeCompare(b.shortName));
+  }, [state, sortBy]);
 
   function toggle<T>(set: Set<T>, val: T, setter: (s: Set<T>) => void) {
     const next = new Set(set);
@@ -57,6 +67,8 @@ export function HospitalSearch() {
     setQuery('');
   }
 
+  const totalCount = state.kind === 'success' ? state.data.length : null;
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 pb-12">
       <p className="text-sm text-gray-500 mb-2">
@@ -68,7 +80,7 @@ export function HospitalSearch() {
       <h1 className="text-2xl font-bold mb-1">ค้นหาโรงพยาบาล</h1>
       <p className="text-gray-600 mb-5">
         ในเครือ สำนักการแพทย์ กรุงเทพมหานคร ทั้งหมด{' '}
-        <strong>{HOSPITALS.length} โรงพยาบาล</strong>
+        <strong>9 โรงพยาบาล</strong>
       </p>
 
       <form
@@ -170,7 +182,15 @@ export function HospitalSearch() {
         <section>
           <div className="flex justify-between items-center mb-3 text-sm">
             <span>
-              แสดง <strong>{filtered.length}</strong> จาก {HOSPITALS.length} รายการ
+              {state.kind === 'submitting' && 'กำลังโหลด…'}
+              {state.kind === 'success' && (
+                <>
+                  แสดง <strong>{sortedHospitals.length}</strong>
+                  {totalCount !== null && ` จาก ${totalCount}`} รายการ
+                </>
+              )}
+              {state.kind === 'error' && 'เกิดข้อผิดพลาด'}
+              {state.kind === 'idle' && ''}
             </span>
             <label className="flex items-center gap-2">
               เรียงตาม:
@@ -187,13 +207,32 @@ export function HospitalSearch() {
             </label>
           </div>
 
-          {filtered.length === 0 ? (
+          {(state.kind === 'idle' || state.kind === 'submitting') && (
+            <div className="space-y-4">
+              {[1, 2, 3].map((n) => (
+                <div
+                  key={n}
+                  className="bg-white border border-gov-border p-4 h-28 animate-pulse"
+                />
+              ))}
+            </div>
+          )}
+
+          {state.kind === 'error' && (
+            <div className="bg-white border border-gov-err-ink p-8 text-center text-gov-err-ink">
+              ไม่สามารถโหลดข้อมูลได้: {state.error.message}
+            </div>
+          )}
+
+          {state.kind === 'success' && sortedHospitals.length === 0 && (
             <div className="bg-white border border-gov-border p-8 text-center text-gray-500">
               ไม่พบโรงพยาบาลที่ตรงกับตัวกรอง ลองล้างตัวกรองหรือเปลี่ยนคำค้นหา
             </div>
-          ) : (
+          )}
+
+          {state.kind === 'success' && sortedHospitals.length > 0 && (
             <div className="space-y-4">
-              {filtered.map((h) => (
+              {sortedHospitals.map((h) => (
                 <HospitalCard key={h.id} hospital={h} />
               ))}
             </div>

@@ -2,7 +2,7 @@ import { useCallback, useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Announcement } from '@/components/Announcement';
 import { useAuth } from '@/lib/auth';
-import { ANNOUNCEMENTS } from '@/lib/mockData';
+import { ANNOUNCEMENTS } from '@/lib/uiContent';
 import { useRequest } from '@/shared/state/useRequest';
 import type { User } from '@/lib/types';
 

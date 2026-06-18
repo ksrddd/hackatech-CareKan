@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 import { buddhistYear, formatThaiWeekdayShort } from '@/lib/format';
-import { getDayAvailability } from '@/lib/mockData';
 import type { ClinicCode } from '@/lib/types';
 
 interface DateGridProps {
@@ -36,8 +35,6 @@ interface Cell {
   isToday: boolean;
   isWeekend: boolean;
   isHoliday: boolean;
-  remaining: number;
-  totalCapacity: number;
 }
 
 function buildCells(year: number, month: number): Cell[] {
@@ -63,16 +60,14 @@ function buildCells(year: number, month: number): Cell[] {
       isToday: d.getTime() === today.getTime(),
       isWeekend: d.getDay() === 0 || d.getDay() === 6,
       isHoliday: false,
-      remaining: 0,
-      totalCapacity: 0,
     });
   }
   return cells;
 }
 
 export function DateGrid({
-  hospitalId,
-  clinic,
+  hospitalId: _hospitalId,
+  clinic: _clinic,
   selectedDate,
   onSelect,
   monthOffset = 0,
@@ -86,18 +81,7 @@ export function DateGrid({
   const year = baseDate.getFullYear();
   const month = baseDate.getMonth();
 
-  const cells = useMemo(() => {
-    const arr = buildCells(year, month);
-    return arr.map((c) => {
-      if (c.isPast || c.isWeekend || !c.isCurrentMonth) return c;
-      const avail = getDayAvailability(hospitalId, clinic, c.iso);
-      return {
-        ...c,
-        remaining: avail.remaining,
-        totalCapacity: avail.totalCapacity,
-      };
-    });
-  }, [year, month, hospitalId, clinic]);
+  const cells = useMemo(() => buildCells(year, month), [year, month]);
 
   return (
     <>
@@ -138,8 +122,7 @@ export function DateGrid({
             !cell.isCurrentMonth ||
             cell.isPast ||
             cell.isWeekend ||
-            cell.isHoliday ||
-            cell.remaining <= 0;
+            cell.isHoliday;
 
           const base =
             'min-h-[70px] flex flex-col justify-between p-2 text-center text-sm border-b border-gov-border';
@@ -151,7 +134,6 @@ export function DateGrid({
             else if (cell.isToday) hint = 'วันนี้';
             else if (cell.isPast) hint = 'ผ่านมาแล้ว';
             else if (cell.isWeekend) hint = cell.day % 7 === 0 ? 'อาทิตย์' : 'เสาร์';
-            else if (cell.remaining <= 0) hint = 'เต็ม';
             return (
               <div
                 key={cell.iso + i}
@@ -166,8 +148,6 @@ export function DateGrid({
             );
           }
 
-          const lowCapacity = cell.remaining <= cell.totalCapacity * 0.2;
-
           return (
             <button
               key={cell.iso + i}
@@ -176,16 +156,14 @@ export function DateGrid({
               className={`${base} ${sideBorder} cursor-pointer transition-colors ${
                 isSelected
                   ? 'bg-gov-primary text-white font-semibold'
-                  : lowCapacity
-                    ? 'bg-gov-wait-bg text-gov-wait-ink hover:bg-gov-wait-ink hover:text-white'
-                    : 'hover:bg-gov-primary-tint'
+                  : 'hover:bg-gov-primary-tint'
               }`}
-              aria-label={`${cell.day} ${THAI_MONTHS[month]} เหลือ ${cell.remaining} คิว`}
+              aria-label={`${cell.day} ${THAI_MONTHS[month]}`}
               aria-pressed={isSelected}
             >
               <span className="font-semibold">{cell.day}</span>
               <span className={`text-xs ${isSelected ? 'opacity-85' : ''}`}>
-                {formatThaiWeekdayShort(cell.iso)} · ว่าง {cell.remaining} คิว
+                {formatThaiWeekdayShort(cell.iso)}
               </span>
             </button>
           );

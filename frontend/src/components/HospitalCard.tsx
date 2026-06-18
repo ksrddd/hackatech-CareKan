@@ -1,6 +1,4 @@
 import { Link } from 'react-router-dom';
-import { getDayAvailability } from '@/lib/mockData';
-import { todayISO } from '@/lib/format';
 import { serviceTypeLabel } from '@/lib/types';
 import type { Hospital } from '@/lib/types';
 
@@ -8,25 +6,7 @@ interface HospitalCardProps {
   hospital: Hospital;
 }
 
-function availabilityLabel(remaining: number, total: number) {
-  const ratio = remaining / total;
-  if (ratio > 0.5)
-    return { dots: '●●●●○', label: 'ว่าง', cls: 'text-gov-ok-ink' };
-  if (ratio > 0.25)
-    return { dots: '●●●○○', label: 'ปานกลาง', cls: 'text-gov-ok-ink' };
-  if (ratio > 0.1)
-    return { dots: '●●○○○', label: 'น้อย', cls: 'text-gov-wait-ink' };
-  return { dots: '●○○○○', label: 'เต็มเกือบหมด', cls: 'text-gov-err-ink' };
-}
-
 export function HospitalCard({ hospital }: HospitalCardProps) {
-  const today = todayISO();
-  const { remaining, totalCapacity } = getDayAvailability(
-    hospital.id,
-    'med',
-    today,
-  );
-  const avail = availabilityLabel(remaining, totalCapacity);
   return (
     <article className="bg-white border border-gov-border p-4 hover:border-gov-primary transition-colors">
       <div className="flex gap-4 flex-wrap">
@@ -56,13 +36,8 @@ export function HospitalCard({ hospital }: HospitalCardProps) {
           </p>
         </div>
         <div className="text-right min-w-[150px]">
-          <p className="text-xs text-gray-500 mb-1">คิวว่างวันนี้</p>
-          <p className={`text-lg font-bold ${avail.cls}`}>
-            {avail.dots} {avail.label}
-          </p>
-          <p className="text-xs text-gray-500 mt-1">
-            เหลือ ~{remaining}/{totalCapacity} คิว
-          </p>
+          <p className="text-xs text-gray-500 mb-1">สถานะการจอง</p>
+          <p className="text-lg font-bold text-gov-ok-ink">เปิดจองคิว</p>
         </div>
       </div>
       <div className="flex justify-between items-center mt-3 pt-3 border-t border-gov-border">

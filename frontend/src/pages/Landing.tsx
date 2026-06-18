@@ -1,7 +1,10 @@
 import { Link } from 'react-router-dom';
-import { HOSPITALS } from '@/lib/mockData';
+import { useHospitals } from '@/lib/hospitals';
 
 export function Landing() {
+  const { state } = useHospitals({});
+  const hospitals = state.kind === 'success' ? state.data : [];
+
   return (
     <>
       <section className="bg-gov-primary-tint border-b border-gov-border">
@@ -110,17 +113,26 @@ export function Landing() {
         <p className="text-gray-600 mb-5 text-sm">
           เริ่มต้นด้วย 9 โรงพยาบาลของสำนักการแพทย์ กรุงเทพมหานคร
         </p>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {HOSPITALS.map((h) => (
-            <Link
-              key={h.id}
-              to={`/hospitals/${h.id}`}
-              className="bg-white border border-gov-border px-4 py-3 hover:border-gov-primary"
-            >
-              {h.shortName}
-            </Link>
-          ))}
-        </div>
+        {state.kind === 'submitting' && (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {[1, 2, 3, 4, 5, 6].map((n) => (
+              <div key={n} className="bg-white border border-gov-border px-4 py-3 h-12 animate-pulse" />
+            ))}
+          </div>
+        )}
+        {hospitals.length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {hospitals.map((h) => (
+              <Link
+                key={h.id}
+                to={`/hospitals/${h.id}`}
+                className="bg-white border border-gov-border px-4 py-3 hover:border-gov-primary"
+              >
+                {h.shortName}
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="max-w-3xl mx-auto px-4 py-10 text-center">

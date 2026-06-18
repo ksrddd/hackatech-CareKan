@@ -1,5 +1,5 @@
 import { Link, Navigate, useParams } from 'react-router-dom';
-import { getHospital, HOSPITAL_CLINICS } from '@/lib/mockData';
+import { useHospital } from '@/lib/hospitals';
 import {
   clinicLabel,
   insuranceRightLabel,
@@ -9,10 +9,38 @@ import {
 export function HospitalDetail() {
   const { id } = useParams<{ id: string }>();
   if (!id) return <Navigate to="/search" replace />;
-  const hospital = getHospital(id);
-  if (!hospital) return <Navigate to="/search" replace />;
 
-  const clinics = HOSPITAL_CLINICS[hospital.id] ?? [];
+  const { state } = useHospital(id);
+
+  if (state.kind === 'idle' || state.kind === 'submitting') {
+    return (
+      <div className="max-w-6xl mx-auto px-4 py-6 pb-12">
+        <div className="bg-white border border-gov-border p-8 text-center text-gray-500 animate-pulse">
+          กำลังโหลดข้อมูลโรงพยาบาล…
+        </div>
+      </div>
+    );
+  }
+
+  if (state.kind === 'error') {
+    const isNotFound = state.error.status === 404;
+    return (
+      <div className="max-w-6xl mx-auto px-4 py-6 pb-12">
+        <div className="bg-white border border-gov-err-ink p-8 text-center text-gov-err-ink">
+          {isNotFound
+            ? 'ไม่พบโรงพยาบาลที่ค้นหา'
+            : `เกิดข้อผิดพลาด: ${state.error.message}`}
+        </div>
+        <div className="mt-4 text-center">
+          <Link to="/search" className="text-blue-800 hover:underline">
+            กลับไปค้นหาโรงพยาบาล
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const { hospital, clinics } = state.data;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 pb-12">
