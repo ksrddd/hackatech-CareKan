@@ -10,3 +10,8 @@ dist-ssr
 *.log
 .DS_Store
 *.tsbuildinfo
+
+# Vite reads vite.config.ts directly; do not commit compiled emits (they shadow the .ts)
+vite.config.js
+vite.config.d.ts
+tailwind.config.d.ts
