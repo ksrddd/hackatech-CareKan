@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { QueueStatusBadge } from '@/components/QueueStatusBadge';
-import { useBookings } from '@/lib/bookingsStore';
-import { ageFromBirth } from '@/lib/format';
-import { MOCK_USERS } from '@/lib/mockData';
+import { useAdminQueue, useUpdateStatus } from '@/lib/adminQueue';
+import { useAuth } from '@/lib/auth';
 import {
   appointmentStatusLabel,
   serviceTypeLabel,
@@ -19,13 +18,7 @@ const FILTER_LABEL: Record<Filter, string> = {
   completed_only: 'เฉพาะเสร็จสิ้น',
 };
 
-function ageFor(appt: Appointment): number | null {
-  const u = MOCK_USERS.find((u) => u.id === appt.userId);
-  if (!u) return null;
-  return ageFromBirth(u.birthDate);
-}
-
-function nextStatus(s: AppointmentStatus): AppointmentStatus | null {
+function nextStatusFor(s: AppointmentStatus): AppointmentStatus | null {
   if (s === 'confirmed') return 'checked_in';
   if (s === 'checked_in') return 'in_progress';
   if (s === 'in_progress') return 'completed';
@@ -40,37 +33,60 @@ function actionLabelFor(s: AppointmentStatus): string {
 }
 
 export function QueueView() {
-  const { adminQueueToday, updateStatus } = useBookings();
+  const { user } = useAuth();
+  const hospitalId = user!.primaryHospitalId ?? 'klang';
+  const today = new Date().toISOString().slice(0, 10);
+  const { state, refetch } = useAdminQueue(hospitalId, today, 'med');
+  const update = useUpdateStatus();
   const [filter, setFilter] = useState<Filter>('pending_or_waiting');
   const [search, setSearch] = useState('');
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
-    const id = window.setInterval(() => setTick((n) => n + 1), 5000);
-    return () => window.clearInterval(id);
-  }, []);
+    const t = setInterval(() => {
+      setTick((n) => n + 1);
+      refetch();
+    }, 5000);
+    return () => clearInterval(t);
+  }, [refetch]);
 
-  const queue = adminQueueToday();
+  if (state.kind === 'submitting' || state.kind === 'idle') {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-10 text-gray-500">
+        กำลังโหลดคิว…
+      </div>
+    );
+  }
 
-  const filtered = useMemo(() => {
+  if (state.kind === 'error') {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-10">
+        <div className="border-l-[6px] border-gov-err-ink bg-gov-err-bg text-gov-err-ink p-4">
+          โหลดคิวไม่สำเร็จ: {state.error.message}
+        </div>
+      </div>
+    );
+  }
+
+  const queue = state.data;
+
+  const filtered = queue.filter((a) => {
+    if (filter === 'all') {
+      // ok
+    } else if (filter === 'pending_or_waiting') {
+      if (!['confirmed', 'checked_in'].includes(a.status)) return false;
+    } else if (filter === 'checked_in_only') {
+      if (a.status !== 'checked_in' && a.status !== 'in_progress') return false;
+    } else if (filter === 'completed_only') {
+      if (a.status !== 'completed') return false;
+    }
     const q = search.trim().toLowerCase();
-    return queue.filter((a) => {
-      if (filter === 'all') {
-        // ok
-      } else if (filter === 'pending_or_waiting') {
-        if (!['confirmed', 'checked_in'].includes(a.status)) return false;
-      } else if (filter === 'checked_in_only') {
-        if (a.status !== 'checked_in' && a.status !== 'in_progress') return false;
-      } else if (filter === 'completed_only') {
-        if (a.status !== 'completed') return false;
-      }
-      if (q) {
-        const hay = `${a.userFullName} ${a.bookingRef} ${a.queueNumber}`.toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      return true;
-    });
-  }, [queue, filter, search]);
+    if (q) {
+      const hay = `${a.userFullName} ${a.bookingRef} ${a.queueNumber}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
 
   const current = queue.find((a) => a.status === 'in_progress');
   const stats = {
@@ -82,19 +98,28 @@ export function QueueView() {
     done: queue.filter((a) => a.status === 'completed').length,
   };
 
-  function callNext() {
+  async function callNext() {
     const next = queue.find((a) => a.status === 'checked_in');
-    if (next) updateStatus(next.id, 'in_progress');
+    if (next) {
+      await update.run(next.id, 'in_progress');
+      refetch();
+    }
   }
 
-  function advance(a: Appointment) {
-    const ns = nextStatus(a.status);
-    if (ns) updateStatus(a.id, ns);
+  async function advance(a: Appointment) {
+    const ns = nextStatusFor(a.status);
+    if (ns) {
+      await update.run(a.id, ns);
+      refetch();
+    }
   }
 
-  function markNoShow(a: Appointment) {
-    updateStatus(a.id, 'no_show');
+  async function markNoShow(a: Appointment) {
+    await update.run(a.id, 'no_show');
+    refetch();
   }
+
+  const isSubmitting = update.state.kind === 'submitting';
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 pb-12">
@@ -115,10 +140,7 @@ export function QueueView() {
           <div>
             <dl className="grid grid-cols-[120px_1fr] gap-x-3 gap-y-1">
               <dt className="text-gray-500">ผู้รับบริการ</dt>
-              <dd>
-                {current.userFullName}
-                {ageFor(current) !== null && ` · ${ageFor(current)} ปี`}
-              </dd>
+              <dd>{current.userFullName}</dd>
               <dt className="text-gray-500">นัดเวลา</dt>
               <dd>{current.startTime} น.</dd>
               <dt className="text-gray-500">สาเหตุ</dt>
@@ -130,8 +152,9 @@ export function QueueView() {
           <div className="flex flex-col gap-2">
             <button
               type="button"
-              onClick={() => advance(current)}
-              className="px-4 py-2.5 font-semibold text-white bg-gov-primary border border-gov-primary-dark hover:bg-gov-primary-dark"
+              disabled={isSubmitting}
+              onClick={() => void advance(current)}
+              className="px-4 py-2.5 font-semibold text-white bg-gov-primary border border-gov-primary-dark hover:bg-gov-primary-dark disabled:opacity-50"
             >
               เสร็จสิ้นการตรวจ
             </button>
@@ -199,8 +222,9 @@ export function QueueView() {
         </span>
         <button
           type="button"
-          onClick={callNext}
-          className="px-3 py-1.5 text-sm font-semibold text-gov-ink bg-white border-2 border-gray-900 hover:bg-gray-100"
+          disabled={isSubmitting}
+          onClick={() => void callNext()}
+          className="px-3 py-1.5 text-sm font-semibold text-gov-ink bg-white border-2 border-gray-900 hover:bg-gray-100 disabled:opacity-50"
         >
           เรียกคิวถัดไป
         </button>
@@ -216,7 +240,6 @@ export function QueueView() {
             <th className="text-left p-2 font-semibold text-sm">นัด</th>
             <th className="text-left p-2 font-semibold text-sm">เช็กอิน</th>
             <th className="text-left p-2 font-semibold text-sm">ผู้รับบริการ</th>
-            <th className="text-left p-2 font-semibold text-sm">อายุ</th>
             <th className="text-left p-2 font-semibold text-sm">วัตถุประสงค์</th>
             <th className="text-left p-2 font-semibold text-sm">สถานะ</th>
             <th className="text-left p-2 font-semibold text-sm">การจัดการ</th>
@@ -224,8 +247,7 @@ export function QueueView() {
         </thead>
         <tbody>
           {filtered.map((a) => {
-            const age = ageFor(a);
-            const next = nextStatus(a.status);
+            const ns = nextStatusFor(a.status);
             const checkedInTime = a.checkedInAt
               ? a.checkedInAt.slice(11, 16)
               : '—';
@@ -238,17 +260,17 @@ export function QueueView() {
                 <td className="p-2">{a.startTime}</td>
                 <td className="p-2">{checkedInTime}</td>
                 <td className="p-2">{a.userFullName}</td>
-                <td className="p-2">{age ?? '—'}</td>
                 <td className="p-2">{a.reason || serviceTypeLabel[a.purpose]}</td>
                 <td className="p-2">
                   <QueueStatusBadge status={a.status} />
                 </td>
                 <td className="p-2 whitespace-nowrap">
-                  {next && (
+                  {ns && (
                     <button
                       type="button"
-                      onClick={() => advance(a)}
-                      className="px-2 py-1 text-xs text-white bg-gov-primary border border-gov-primary-dark hover:bg-gov-primary-dark"
+                      disabled={isSubmitting}
+                      onClick={() => void advance(a)}
+                      className="px-2 py-1 text-xs text-white bg-gov-primary border border-gov-primary-dark hover:bg-gov-primary-dark disabled:opacity-50"
                     >
                       {actionLabelFor(a.status)}
                     </button>
@@ -256,8 +278,9 @@ export function QueueView() {
                   {(a.status === 'confirmed' || a.status === 'checked_in') && (
                     <button
                       type="button"
-                      onClick={() => markNoShow(a)}
-                      className="px-2 py-1 text-xs border border-gray-900 bg-white hover:bg-gray-100"
+                      disabled={isSubmitting}
+                      onClick={() => void markNoShow(a)}
+                      className="px-2 py-1 text-xs border border-gray-900 bg-white hover:bg-gray-100 disabled:opacity-50"
                     >
                       ไม่มา
                     </button>
@@ -268,7 +291,7 @@ export function QueueView() {
           })}
           {filtered.length === 0 && (
             <tr>
-              <td colSpan={8} className="p-6 text-center text-gray-500">
+              <td colSpan={7} className="p-6 text-center text-gray-500">
                 ไม่มีรายการที่ตรงกับตัวกรอง
               </td>
             </tr>

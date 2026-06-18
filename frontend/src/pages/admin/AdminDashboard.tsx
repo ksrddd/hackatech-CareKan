@@ -1,12 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useBookings } from '@/lib/bookingsStore';
-import {
-  ADMIN_HOURLY_LOAD,
-  ADMIN_RECENT_BOOKINGS,
-  CONSULT_ROOMS,
-  getHospital,
-} from '@/lib/mockData';
+import { useAdminQueue } from '@/lib/adminQueue';
+import { useAuth } from '@/lib/auth';
+import { ADMIN_HOURLY_LOAD, CONSULT_ROOMS } from '@/lib/uiContent';
 import { serviceTypeLabel } from '@/lib/types';
 
 const ROOM_STATUS_LABEL = {
@@ -16,15 +12,22 @@ const ROOM_STATUS_LABEL = {
 };
 
 export function AdminDashboard() {
-  const { adminQueueToday } = useBookings();
+  const { user } = useAuth();
+  const hospitalId = user!.primaryHospitalId ?? 'klang';
+  const today = new Date().toISOString().slice(0, 10);
+  const { state, refetch } = useAdminQueue(hospitalId, today);
   const [refreshTick, setRefreshTick] = useState(0);
 
   useEffect(() => {
-    const id = window.setInterval(() => setRefreshTick((n) => n + 1), 5000);
+    const id = window.setInterval(() => {
+      setRefreshTick((n) => n + 1);
+      refetch();
+    }, 5000);
     return () => window.clearInterval(id);
-  }, []);
+  }, [refetch]);
 
-  const queue = adminQueueToday();
+  const queue = state.kind === 'success' ? state.data : [];
+
   const total = queue.length;
   const checkedIn = queue.filter((a) =>
     ['checked_in', 'in_progress', 'completed'].includes(a.status),
@@ -32,13 +35,14 @@ export function AdminDashboard() {
   const inProgress = queue.filter((a) => a.status === 'in_progress').length;
   const completed = queue.filter((a) => a.status === 'completed').length;
   const noShow = queue.filter((a) => a.status === 'no_show').length;
-  const pending = queue.filter(
-    (a) => a.status === 'confirmed',
-  );
+  const pending = queue.filter((a) => a.status === 'confirmed');
 
   const utilization = total === 0 ? 0 : Math.round((checkedIn / total) * 100);
 
-  const recent = [...ADMIN_RECENT_BOOKINGS];
+  // Most-recent N bookings sorted by createdAt desc
+  const recent = [...queue]
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, 5);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-5 pb-12">
@@ -149,33 +153,35 @@ export function AdminDashboard() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-100 border-b-2 border-gray-900">
-                  <th className="text-left p-2 font-semibold">เวลา</th>
                   <th className="text-left p-2 font-semibold">หมายเลขจอง</th>
                   <th className="text-left p-2 font-semibold">ผู้ป่วย</th>
-                  <th className="text-left p-2 font-semibold">นัดวันที่</th>
+                  <th className="text-left p-2 font-semibold">นัดเวลา</th>
                   <th className="text-left p-2 font-semibold">วัตถุประสงค์</th>
                 </tr>
               </thead>
               <tbody>
-                {recent.map((r) => {
-                  const hosp = getHospital(r.appt.hospitalId);
-                  return (
-                    <tr
-                      key={r.appt.id + r.time}
-                      className="border-b border-gov-border"
-                    >
-                      <td className="p-2">{r.time}</td>
-                      <td className="p-2 font-mono">{r.appt.bookingRef}</td>
-                      <td className="p-2">{r.appt.userFullName}</td>
-                      <td className="p-2">
-                        {hosp?.shortName ?? r.appt.hospitalId} · {r.appt.startTime}
-                      </td>
-                      <td className="p-2">
-                        {serviceTypeLabel[r.appt.purpose]}
-                      </td>
-                    </tr>
-                  );
-                })}
+                {recent.map((r) => (
+                  <tr
+                    key={r.id}
+                    className="border-b border-gov-border"
+                  >
+                    <td className="p-2 font-mono">{r.bookingRef}</td>
+                    <td className="p-2">{r.userFullName}</td>
+                    <td className="p-2">{r.startTime}</td>
+                    <td className="p-2">
+                      {serviceTypeLabel[r.purpose]}
+                    </td>
+                  </tr>
+                ))}
+                {recent.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="p-4 text-center text-gray-500 text-sm">
+                      {state.kind === 'submitting' || state.kind === 'idle'
+                        ? 'กำลังโหลด…'
+                        : 'ยังไม่มีรายการ'}
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
             <p className="mt-3 text-xs text-right">

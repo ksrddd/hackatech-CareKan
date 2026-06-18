@@ -4,7 +4,6 @@ import { AdminLayout } from './components/AdminLayout';
 import { CitizenLayout } from './components/CitizenLayout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AuthProvider } from './lib/auth';
-import { BookingsProvider } from './lib/bookingsStore';
 import { ElderlyModeProvider } from './lib/elderlyMode';
 import { AppointmentDetail } from './pages/AppointmentDetail';
 import { BookAppointment } from './pages/BookAppointment';
@@ -58,9 +57,8 @@ export function App() {
   return (
     <AuthProvider>
       <ElderlyModeProvider>
-        <BookingsProvider>
-          <BrowserRouter>
-            <Routes>
+        <BrowserRouter>
+          <Routes>
               <Route element={<CitizenLayout />}>
                 <Route index element={<Landing />} />
                 <Route path="login" element={<Login />} />
@@ -102,9 +100,8 @@ export function App() {
               </Route>
 
               <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </BookingsProvider>
+          </Routes>
+        </BrowserRouter>
       </ElderlyModeProvider>
     </AuthProvider>
   );

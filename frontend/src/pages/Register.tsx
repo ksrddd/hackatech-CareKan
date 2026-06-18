@@ -1,5 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/lib/auth';
+import { useRequest } from '@/shared/state/useRequest';
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -83,6 +85,10 @@ function Sep({ last, children }: { last: boolean; children: ReactNode }) {
 
 export function Register() {
   const navigate = useNavigate();
+  const { register } = useAuth();
+  const submit = useRequest(
+    (_signal, input: Parameters<typeof register>[0]) => register(input),
+  );
   const [step, setStep] = useState<Step>(1);
   const [form, setForm] = useState<FormState>(initial);
   const [error, setError] = useState<string | null>(null);
@@ -125,11 +131,24 @@ export function Register() {
         setError('รหัสผ่านและการยืนยันไม่ตรงกัน');
         return;
       }
-      // Mock-only: send to login (no backend yet)
-      navigate('/login', {
-        replace: true,
-        state: { registeredCid: form.cid },
-      });
+      void submit
+        .run({
+          nationalId: form.cid,
+          firstName: form.firstName,
+          lastName: form.lastName,
+          birthDate: form.birthDate,
+          sex: form.sex,
+          phone: form.phone,
+          email: form.email,
+          password: form.password,
+          acceptedPdpaAt: new Date().toISOString(),
+        })
+        .then((user) => {
+          if (user) navigate('/my-appointments', { replace: true });
+        })
+        .catch(() => {
+          /* error rendered via submit.state */
+        });
       return;
     }
     setStep((s) => ((s + 1) as Step));
@@ -162,9 +181,9 @@ export function Register() {
         </p>
 
         <form onSubmit={next} noValidate className="space-y-4">
-          {error && (
+          {(error ?? (submit.state.kind === 'error' ? submit.state.error.message : null)) && (
             <div className="border-l-[6px] border-gov-err-ink bg-gov-err-bg text-gov-err-ink p-3 text-sm">
-              {error}
+              {error ?? (submit.state.kind === 'error' ? submit.state.error.message : null)}
             </div>
           )}
 
@@ -356,9 +375,14 @@ export function Register() {
             </button>
             <button
               type="submit"
-              className="px-6 py-2 font-semibold text-white bg-gov-primary border-2 border-gov-primary-dark hover:bg-gov-primary-dark"
+              disabled={submit.state.kind === 'submitting'}
+              className="px-6 py-2 font-semibold text-white bg-gov-primary border-2 border-gov-primary-dark hover:bg-gov-primary-dark disabled:opacity-50"
             >
-              {step === 4 ? 'สมัครและเข้าสู่ระบบ' : 'ถัดไป →'}
+              {submit.state.kind === 'submitting'
+                ? 'กำลังสมัคร…'
+                : step === 4
+                  ? 'สมัครและเข้าสู่ระบบ'
+                  : 'ถัดไป →'}
             </button>
           </div>
         </form>
