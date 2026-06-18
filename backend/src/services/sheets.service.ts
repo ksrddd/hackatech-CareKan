@@ -1,8 +1,4 @@
-import { google } from 'googleapis';
-
-const SPREADSHEET_ID = process.env['GOOGLE_SHEETS_SPREADSHEET_ID'];
-const CLIENT_EMAIL = process.env['GOOGLE_SERVICE_ACCOUNT_EMAIL'];
-const PRIVATE_KEY = process.env['GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY']?.replace(/\\n/g, '\n');
+const APPS_SCRIPT_URL = process.env['GOOGLE_APPS_SCRIPT_URL'];
 
 export interface SheetRow {
   organizationName: string;
@@ -15,36 +11,30 @@ export interface SheetRow {
 }
 
 export async function appendRequestToSheet(row: SheetRow): Promise<void> {
-  if (!SPREADSHEET_ID || !CLIENT_EMAIL || !PRIVATE_KEY) {
-    console.warn('[sheets] Missing Google Sheets credentials — skipping sheet append');
+  if (!APPS_SCRIPT_URL) {
+    console.warn('[sheets] GOOGLE_APPS_SCRIPT_URL not set — skipping sheet append');
     return;
   }
   try {
-    const auth = new google.auth.JWT({
-      email: CLIENT_EMAIL,
-      key: PRIVATE_KEY,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        timestamp: new Date().toISOString(),
+        organizationName: row.organizationName,
+        staffFullName: row.staffFullName,
+        position: row.position,
+        organizationEmail: row.organizationEmail,
+        contactPhone: row.contactPhone,
+        purpose: row.purpose,
+        driveLinks: row.driveLinks.join('\n'),
+      }),
     });
-    const sheets = google.sheets({ version: 'v4', auth });
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: SPREADSHEET_ID,
-      range: 'Sheet1!A1',
-      valueInputOption: 'RAW',
-      requestBody: {
-        values: [[
-          new Date().toISOString(),
-          row.organizationName,
-          row.staffFullName,
-          row.position,
-          row.organizationEmail,
-          row.contactPhone,
-          row.purpose,
-          row.driveLinks.join('\n'),
-        ]],
-      },
-    });
+    if (!res.ok) {
+      console.error(`[sheets] Apps Script returned ${res.status}: ${await res.text()}`);
+    }
   } catch (err) {
-    console.error('[sheets] Failed to append row:', err);
+    console.error('[sheets] Failed to call Apps Script:', err);
     // Do not re-throw — Sheets failure must never block form submission.
   }
 }
