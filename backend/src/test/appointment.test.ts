@@ -63,11 +63,11 @@ describe('appointments', () => {
   it("blocks reading another user's appointment (PDPA) with 404", async () => {
     // create a second user + their appointment
     await request(app).post('/api/auth/register').send({
-      nationalId: '2222222222228', firstName: 'อื่น', lastName: 'คน', birthDate: '1990-01-01',
+      nationalId: '3222222222225', firstName: 'อื่น', lastName: 'คน', birthDate: '1990-01-01',
       sex: 'male', phone: '0800000001', email: 'other@example.com', password: 'pass1234',
       acceptedPdpaAt: new Date().toISOString(),
     });
-    const otherLogin = await request(app).post('/api/auth/login').send({ nationalId: '2222222222228', password: 'pass1234' });
+    const otherLogin = await request(app).post('/api/auth/login').send({ nationalId: '3222222222225', password: 'pass1234' });
     const slot2 = await prisma.schedule.findFirst({ where: { hospitalId: 'taksin', clinic: 'med', currentBooked: { lt: 6 } } });
     const created = await request(app).post('/api/appointments')
       .set('Authorization', `Bearer ${otherLogin.body.token}`)

@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { isThaiNationalId } from '../../../shared/nationalId';
-import { config } from '../config.js';
 
 const serviceType = z.enum(['opd','new_patient','checkup','follow_up','lab','medication','elderly']);
 const clinicCode = z.enum(['med','surg','ped','ob','ortho','eye','ent','dent','skin','ncd','psych']);
@@ -15,15 +14,10 @@ export const loginSchema = z.object({
 });
 
 export const registerSchema = z.object({
-  // 13-digit format always; the official checksum only when STRICT_NATIONAL_ID
-  // is enabled (production), so the demo's fixed IDs still register.
   nationalId: z
     .string()
     .regex(/^\d{13}$/, 'เลขบัตรประชาชนต้องมี 13 หลัก')
-    .refine(
-      (v) => !config.strictNationalId || isThaiNationalId(v),
-      'เลขบัตรประจำตัวประชาชนไม่ถูกต้อง',
-    ),
+    .refine(isThaiNationalId, 'เลขบัตรประจำตัวประชาชนไม่ถูกต้อง'),
   firstName: z.string().min(1),
   lastName: z.string().min(1),
   birthDate: z.string().min(1),

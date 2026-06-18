@@ -28,7 +28,7 @@ describe('auth', () => {
 
   it('registers a new citizen and the token works on /auth/me', async () => {
     const reg = await request(app).post('/api/auth/register').send({
-      nationalId: '1111111111119', firstName: 'ทดสอบ', lastName: 'ผู้ใช้',
+      nationalId: '3111111111115', firstName: 'ทดสอบ', lastName: 'ผู้ใช้',
       birthDate: '1990-01-01', sex: 'male', phone: '0800000000',
       email: 'newuser@example.com', password: 'pass1234',
       acceptedPdpaAt: new Date().toISOString(),
@@ -38,7 +38,7 @@ describe('auth', () => {
     expect(token).toBeTruthy();
     const me = await request(app).get('/api/auth/me').set('Authorization', `Bearer ${token}`);
     expect(me.status).toBe(200);
-    expect(me.body.user.nationalId).toBe('1111111111119');
+    expect(me.body.user.nationalId).toBe('3111111111115');
   });
 
   it('blocks /auth/me without a token (401)', async () => {

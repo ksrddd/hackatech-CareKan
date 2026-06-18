@@ -4,10 +4,6 @@ import { useAuth } from '@/lib/auth';
 import { useRequest } from '@/shared/state/useRequest';
 import { isThaiNationalId } from '../../../shared/nationalId';
 
-// Off by default so the demo keeps working with a plain 13-digit check.
-// Set VITE_STRICT_NATIONAL_ID=true to enforce the real checksum in production.
-const STRICT_NATIONAL_ID = import.meta.env.VITE_STRICT_NATIONAL_ID === 'true';
-
 type Step = 1 | 2 | 3 | 4;
 
 interface FormState {
@@ -114,7 +110,7 @@ export function Register() {
         setError('เลขบัตรประจำตัวประชาชนต้องเป็นตัวเลข 13 หลัก');
         return;
       }
-      if (STRICT_NATIONAL_ID && !isThaiNationalId(form.cid)) {
+      if (!isThaiNationalId(form.cid)) {
         setError('เลขบัตรประจำตัวประชาชนไม่ถูกต้อง');
         return;
       }
