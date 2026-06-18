@@ -13,7 +13,9 @@
     "prisma:reset": "prisma migrate reset --force",
     "db:seed": "tsx prisma/seed.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "key:gen": "tsx scripts/gen-key.ts",
+    "key:revoke": "tsx scripts/revoke-key.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
