@@ -95,7 +95,7 @@ export function BookSuccess() {
           </span>
         </div>
         <div className="grid sm:grid-cols-[180px_1fr] gap-5 items-center">
-          <QrStub />
+          <QrStub queue_id={appt.id} />
           <dl className="text-[0.95rem] grid grid-cols-[110px_1fr] gap-y-2">
             <dt className="font-semibold">หมายเลขจอง</dt>
             <dd className="font-mono">{appt.bookingRef}</dd>
