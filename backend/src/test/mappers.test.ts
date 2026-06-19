@@ -16,10 +16,12 @@ describe('mappers', () => {
   });
 
   it('maps a schedule row to TimeSlot DTO', () => {
-    const dto = toTimeSlotDto({
-      id: 's1', hospitalId: 'klang', clinic: 'med', date: '2026-06-20',
-      startTime: '09:00', endTime: '09:30', maxCapacity: 6, currentBooked: 2, isFull: false,
-    });
-    expect(dto).toMatchObject({ capacity: 6, booked: 2, clinic: 'med' });
+    const dto = toTimeSlotDto(
+      { id: 's1', startTime: '09:00', endTime: '09:30', maxCapacity: 6 },
+      'klang',
+      '2026-06-23',
+      2,
+    );
+    expect(dto).toMatchObject({ id: 's1', hospitalId: 'klang', date: '2026-06-23', capacity: 6, booked: 2 });
   });
 });

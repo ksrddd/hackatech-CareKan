@@ -15,7 +15,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "key:gen": "tsx scripts/gen-key.ts",
-    "key:revoke": "tsx scripts/revoke-key.ts"
+    "key:revoke": "tsx scripts/revoke-key.ts",
+    "postinstall": "prisma generate"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

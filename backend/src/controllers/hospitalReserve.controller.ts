@@ -13,6 +13,7 @@ const createSchema = z.object({
   patientNationalId: z.string().regex(/^\d{13}$/, 'เลขบัตรประชาชนต้องมี 13 หลัก'),
   hospitalId: z.string().min(1),
   scheduleId: z.string().min(1),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   purpose: serviceType,
   reason: z.string().default(''),
 });
@@ -62,25 +63,28 @@ export async function createReserve(req: Request, res: Response): Promise<void> 
 
   const reserve = await prisma.$transaction(async (tx) => {
     const slot = await tx.schedule.findUnique({ where: { id: body.scheduleId } });
-    if (!slot || slot.hospitalId !== body.hospitalId) {
+    if (!slot) {
       throw new ApiError('ไม่พบช่วงเวลานี้', 404, 'SLOT_NOT_FOUND');
     }
-    if (slot.isFull || slot.currentBooked >= slot.maxCapacity) {
+    const dayOfWeek = new Date(body.date + 'T00:00:00').getDay();
+    if (slot.dayOfWeek !== dayOfWeek) {
+      throw new ApiError('วันที่ไม่ตรงกับตารางเวลา', 400, 'DATE_MISMATCH');
+    }
+    const booked = await tx.reserve.count({
+      where: { hospitalId: body.hospitalId, scheduleId: slot.id, date: body.date },
+    });
+    if (booked >= slot.maxCapacity) {
       throw new ApiError('ช่วงเวลานี้เต็มแล้ว', 409, 'SLOT_FULL');
     }
     const bookingCode = await generateBookingCode(tx);
-    const willBeFull = slot.currentBooked + 1 >= slot.maxCapacity;
-    const updatedSlot = await tx.schedule.update({
-      where: { id: slot.id },
-      data: { currentBooked: { increment: 1 }, isFull: willBeFull },
-    });
-    const queueNumber = `A${String(updatedSlot.currentBooked).padStart(3, '0')}`;
+    const queueNumber = `A${String(booked + 1).padStart(3, '0')}`;
     return tx.reserve.create({
       data: {
         bookingCode,
         userId: patient.id,
-        hospitalId: slot.hospitalId,
+        hospitalId: body.hospitalId,
         scheduleId: slot.id,
+        date: body.date,
         purpose: body.purpose,
         reason: body.reason,
         status: 'confirmed',

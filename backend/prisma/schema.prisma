@@ -39,20 +39,6 @@ enum Zone {
   thon_south
 }
 
-enum ClinicCode {
-  med
-  surg
-  ped
-  ob
-  ortho
-  eye
-  ent
-  dent
-  skin
-  ncd
-  psych
-}
-
 enum AppointmentStatus {
   pending
   confirmed
@@ -110,28 +96,22 @@ model Hospital {
   rightsAccepted InsuranceRight[] @map("rights_accepted")
   mockDistanceKm Float            @map("mock_distance_km")
 
-  schedules Schedule[]
   reserves  Reserve[]
 
   @@map("hospitals")
 }
 
 model Schedule {
-  id            String     @id @default(cuid())
-  hospitalId    String     @map("hospital_id")
-  clinic        ClinicCode
-  date          String
-  startTime     String     @map("start_time")
-  endTime       String     @map("end_time")
-  maxCapacity   Int        @map("max_capacity")
-  currentBooked Int        @default(0) @map("current_booked")
-  isFull        Boolean    @default(false) @map("is_full")
+  id          String @id @default(cuid())
+  dayOfWeek   Int    @map("day_of_week")
+  startTime   String @map("start_time")
+  endTime     String @map("end_time")
+  maxCapacity Int    @map("max_capacity")
 
-  hospital Hospital  @relation(fields: [hospitalId], references: [id])
   reserves Reserve[]
 
-  @@unique([hospitalId, clinic, date, startTime], name: "slot_identity")
-  @@index([hospitalId, clinic, date])
+  @@unique([dayOfWeek, startTime], name: "slot_identity")
+  @@index([dayOfWeek])
   @@map("schedules")
 }
 
@@ -141,6 +121,7 @@ model Reserve {
   userId      String            @map("user_id")
   hospitalId  String            @map("hospital_id")
   scheduleId  String            @map("schedule_id")
+  date        String
   purpose     ServiceType
   reason      String            @default("")
   status      AppointmentStatus @default(confirmed)
@@ -151,6 +132,6 @@ model Reserve {
   hospital Hospital @relation(fields: [hospitalId], references: [id])
   schedule Schedule @relation(fields: [scheduleId], references: [id])
 
-  @@index([hospitalId, scheduleId])
+  @@index([hospitalId, scheduleId, date])
   @@map("reserves")
 }

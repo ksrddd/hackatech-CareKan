@@ -27,11 +27,16 @@ export function toHospitalDto(h: HospitalRow): Hospital {
   };
 }
 
-export function toTimeSlotDto(s: ScheduleRow): TimeSlot {
+export function toTimeSlotDto(
+  s: Pick<ScheduleRow, 'id' | 'startTime' | 'endTime' | 'maxCapacity'>,
+  hospitalId: string,
+  date: string,
+  booked: number,
+): TimeSlot {
   return {
-    id: s.id, hospitalId: s.hospitalId, clinic: s.clinic, date: s.date,
+    id: s.id, hospitalId, date,
     startTime: s.startTime, endTime: s.endTime,
-    capacity: s.maxCapacity, booked: s.currentBooked,
+    capacity: s.maxCapacity, booked,
   };
 }
 
@@ -44,10 +49,9 @@ export function toAppointmentDto(
     userId: r.userId,
     userFullName: `${r.user.firstName} ${r.user.lastName}`.trim(),
     hospitalId: r.hospitalId,
-    clinic: r.schedule.clinic,
     purpose: r.purpose,
     reason: r.reason,
-    date: r.schedule.date,
+    date: r.date,
     startTime: r.schedule.startTime,
     endTime: r.schedule.endTime,
     queueNumber: r.queueNumber,

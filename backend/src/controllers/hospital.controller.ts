@@ -16,6 +16,6 @@ export async function detail(req: Request, res: Response): Promise<void> {
 
 export async function timeSlots(req: Request, res: Response): Promise<void> {
   const id = req.params['id'] ?? '';
-  const { date, clinic } = timeSlotsQuerySchema.parse(req.query);
-  res.json({ slots: await svc.listTimeSlots(id, date, clinic) } satisfies TimeSlotsResponse);
+  const { date } = timeSlotsQuerySchema.parse(req.query);
+  res.json({ slots: await svc.listTimeSlots(id, date) } satisfies TimeSlotsResponse);
 }

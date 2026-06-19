@@ -10,3 +10,9 @@ docs/*
 reference/*
 docker-compose.override.yml
 backend/.env
+.vercel
+
+# Vercel CLI artifacts (sensitive tokens / test output)
+.env.vercel-check
+env_check.json
+response.json

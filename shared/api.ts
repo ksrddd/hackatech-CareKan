@@ -4,7 +4,6 @@
 
 import type {
   Appointment,
-  ClinicCode,
   Hospital,
   InsuranceRight,
   ServiceType,
@@ -65,14 +64,12 @@ export interface HospitalsResponse {
 
 export interface HospitalDetailResponse {
   hospital: Hospital;
-  clinics: ClinicCode[];
 }
 
 // ─── Time slots ────────────────────────────────────────────────────
 
 export interface TimeSlotsQuery {
   date: string;
-  clinic: ClinicCode;
 }
 
 export interface TimeSlotsResponse {
@@ -83,10 +80,10 @@ export interface TimeSlotsResponse {
 
 export interface CreateAppointmentRequest {
   hospitalId: string;
-  clinic: ClinicCode;
   purpose: ServiceType;
   reason: string;
   slotId: string;
+  date: string;
 }
 
 export interface AppointmentResponse {

@@ -64,8 +64,8 @@ export function CitizenHeader() {
             </div>
           </>
         ) : (
-          <>
-            <nav className="ml-auto hidden md:flex gap-5 text-sm" aria-label="เมนูหลัก">
+          <div className="ml-auto hidden md:flex items-center gap-5">
+            <nav className="flex gap-5 text-sm" aria-label="เมนูหลัก">
               <NavLink to="/" end className={navClass}>
                 หน้าหลัก
               </NavLink>
@@ -73,7 +73,7 @@ export function CitizenHeader() {
                 ค้นหาโรงพยาบาล
               </NavLink>
             </nav>
-            <div className="hidden md:flex gap-2 ml-auto">
+            <div className="flex gap-2">
               <NavLink
                 to="/login"
                 className="px-3 py-1.5 text-sm border border-gov-primary text-gov-primary font-semibold hover:bg-gov-primary-tint"
@@ -87,7 +87,7 @@ export function CitizenHeader() {
                 สมัครใช้งาน
               </NavLink>
             </div>
-          </>
+          </div>
         )}
 
         {/* Hamburger button (mobile only) */}

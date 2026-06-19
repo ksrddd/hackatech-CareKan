@@ -1,7 +1,6 @@
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { useHospital } from '@/lib/hospitals';
 import {
-  clinicLabel,
   insuranceRightLabel,
   serviceTypeLabel,
 } from '@/lib/types';
@@ -40,7 +39,7 @@ export function HospitalDetail() {
     );
   }
 
-  const { hospital, clinics } = state.data;
+  const { hospital } = state.data;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 pb-12">
@@ -80,7 +79,7 @@ export function HospitalDetail() {
               จองคิว
             </Link>
             <p className="text-xs text-gray-500 mt-2">
-              เลือกคลินิก วันและช่วงเวลาในขั้นถัดไป
+              เลือกวันและช่วงเวลาในขั้นถัดไป
             </p>
           </div>
         </div>
@@ -103,22 +102,6 @@ export function HospitalDetail() {
                 </li>
               ))}
             </ul>
-          </section>
-
-          <section className="bg-white border border-gov-border p-5 mb-5">
-            <h2 className="text-lg font-semibold pb-2 mb-3 border-b border-gov-border">
-              คลินิก / แผนกที่เปิด
-            </h2>
-            <div className="flex flex-wrap gap-2 text-sm">
-              {clinics.map((c) => (
-                <span
-                  key={c}
-                  className="inline-block px-3 py-1.5 border border-gov-border bg-gray-50"
-                >
-                  {clinicLabel[c]}
-                </span>
-              ))}
-            </div>
           </section>
 
           <section className="bg-white border border-gov-border p-5 mb-5">

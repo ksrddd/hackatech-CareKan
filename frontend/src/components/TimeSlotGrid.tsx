@@ -1,9 +1,8 @@
 import { useTimeSlots } from '@/lib/hospitals';
-import type { ClinicCode, TimeSlot } from '@/lib/types';
+import type { TimeSlot } from '@/lib/types';
 
 interface TimeSlotGridProps {
   hospitalId: string;
-  clinic: ClinicCode;
   date: string;
   selectedSlotId: string | null;
   onSelect: (slot: TimeSlot) => void;
@@ -11,12 +10,11 @@ interface TimeSlotGridProps {
 
 export function TimeSlotGrid({
   hospitalId,
-  clinic,
   date,
   selectedSlotId,
   onSelect,
 }: TimeSlotGridProps) {
-  const { state } = useTimeSlots(hospitalId, date, clinic);
+  const { state } = useTimeSlots(hospitalId, date);
 
   if (state.kind === 'submitting') {
     return (

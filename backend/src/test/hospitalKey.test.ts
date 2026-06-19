@@ -17,31 +17,34 @@ function makeKey() {
   return { plaintext, prefix, hash };
 }
 
+function nextDateForDayOfWeek(dayOfWeek: number, daysAhead = 1): string {
+  const d = new Date();
+  d.setDate(d.getDate() + daysAhead);
+  while (d.getDay() !== dayOfWeek) d.setDate(d.getDate() + 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 let hospitalId: string;
 let plaintext: string;
 let scheduleId: string;
+let scheduleDate: string;
 let patientNationalId: string;
 
 beforeAll(async () => {
   await resetDb(prisma);
   await runSeed(prisma);
 
-  // Pick a seeded hospital
   const hosp = await prisma.hospital.findFirst({ where: { id: 'klang' } });
   hospitalId = hosp!.id;
 
-  // Pick an open slot in that hospital
-  const slot = await prisma.schedule.findFirst({
-    where: { hospitalId, currentBooked: { lt: 6 } },
-    orderBy: { date: 'asc' },
-  });
+  // Pick any schedule slot and compute a matching future date
+  const slot = await prisma.schedule.findFirst({ orderBy: { startTime: 'asc' } });
   scheduleId = slot!.id;
+  scheduleDate = nextDateForDayOfWeek(slot!.dayOfWeek);
 
-  // Pick the seeded patient's nationalId
   const patient = await prisma.user.findFirst({ where: { nationalId: '1234567890123' } });
   patientNationalId = patient!.nationalId;
 
-  // Create a hospital API key
   const k = makeKey();
   plaintext = k.plaintext;
   await prisma.hospitalApiKey.create({
@@ -78,6 +81,7 @@ describe('POST /hospital/reserves — hospital key auth', () => {
         patientNationalId,
         hospitalId: wrongHosp!.id,
         scheduleId,
+        date: scheduleDate,
         purpose: 'opd',
       });
     expect(res.status).toBe(403);
@@ -92,6 +96,7 @@ describe('POST /hospital/reserves — hospital key auth', () => {
         patientNationalId: '9999999999999',
         hospitalId,
         scheduleId,
+        date: scheduleDate,
         purpose: 'opd',
       });
     expect(res.status).toBe(404);
@@ -106,6 +111,7 @@ describe('POST /hospital/reserves — hospital key auth', () => {
         patientNationalId,
         hospitalId,
         scheduleId,
+        date: scheduleDate,
         purpose: 'follow_up',
         reason: 'hospital system integration',
       });
@@ -119,11 +125,8 @@ describe('PATCH /hospital/reserves/:id/status', () => {
   let reserveId: string;
 
   beforeAll(async () => {
-    // Create a booking to update
-    const slot2 = await prisma.schedule.findFirst({
-      where: { hospitalId, currentBooked: { lt: 6 } },
-      orderBy: { date: 'asc' },
-    });
+    const slot2 = await prisma.schedule.findFirst({ where: { id: { not: scheduleId } } });
+    const slot2Date = nextDateForDayOfWeek(slot2!.dayOfWeek, 8);
     const res = await request(app)
       .post('/api/hospital/reserves')
       .set('x-api-key', plaintext)
@@ -131,6 +134,7 @@ describe('PATCH /hospital/reserves/:id/status', () => {
         patientNationalId,
         hospitalId,
         scheduleId: slot2!.id,
+        date: slot2Date,
         purpose: 'checkup',
       });
     reserveId = res.body.appointment.id as string;

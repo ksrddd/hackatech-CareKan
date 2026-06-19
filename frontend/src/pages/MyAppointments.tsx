@@ -13,7 +13,6 @@ import {
   maskNationalId,
   nowFormatted,
 } from '@/lib/format';
-import { clinicLabel } from '@/lib/types';
 import type { Appointment, AppointmentStatus } from '@/lib/types';
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
@@ -40,17 +39,6 @@ function IconBuilding({ className = '' }: { className?: string }) {
   );
 }
 
-function IconStethoscope({ className = '' }: { className?: string }) {
-  return (
-    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"
-      className={`inline-block shrink-0 ${className}`}
-      stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-      <path d="M3 2a1.5 1.5 0 0 0 0 3c.8 0 1.5-.4 1.5-1.5V2" />
-      <path d="M4.5 3.5c0 3.5 2.5 4.5 4.5 4.5a3 3 0 1 1 0 6" />
-      <circle cx="9" cy="14" r="1" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
 
 function IconCalendarEmpty({ className = '' }: { className?: string }) {
   return (
@@ -310,8 +298,6 @@ function AppointmentCalendar({ appointments, hospitalNames }: CalendarProps) {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gov-ink leading-snug">
                       {a.startTime} – {a.endTime} น.
-                      <span className="mx-2 text-gray-300" aria-hidden="true">·</span>
-                      <span className="font-normal text-gray-600">{clinicLabel[a.clinic]}</span>
                     </p>
                     <p className="text-xs text-gray-500 mt-0.5 truncate">
                       {hospitalNames.get(a.hospitalId) ?? a.hospitalId}
@@ -401,10 +387,6 @@ function AppointmentCard({ a, hospName, muted }: AppointmentCardProps) {
         <IconBuilding className="text-gray-400" />
         <span className="font-medium">{hospName}</span>
       </div>
-      <div className="flex items-center gap-1.5 text-sm text-gray-500">
-        <IconStethoscope className="text-gray-400" />
-        <span>{clinicLabel[a.clinic]}</span>
-      </div>
     </Link>
   );
 }
@@ -483,8 +465,6 @@ export function MyAppointments() {
               <div className="flex items-center gap-1.5 text-sm text-gray-600 mt-0.5">
                 <IconBuilding className="text-gray-400" />
                 <span className="font-medium truncate">{nextHospName}</span>
-                <span className="text-gray-400" aria-hidden="true">·</span>
-                <span>{clinicLabel[next.clinic]}</span>
               </div>
             </div>
             <div className="sm:text-right shrink-0">

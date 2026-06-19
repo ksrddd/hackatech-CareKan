@@ -30,22 +30,22 @@ export async function createAppointment(userId: string, input: CreateAppointment
   const reserve = await prisma.$transaction(async (tx) => {
     const slot = await tx.schedule.findUnique({ where: { id: input.slotId } });
     if (!slot) throw new ApiError('ไม่พบช่วงเวลานี้', 404, 'SLOT_NOT_FOUND');
-    if (slot.hospitalId !== input.hospitalId || slot.clinic !== input.clinic) {
-      throw new ApiError('ช่วงเวลาไม่ตรงกับโรงพยาบาล/คลินิกที่เลือก', 400, 'SLOT_MISMATCH');
+    const dayOfWeek = new Date(input.date + 'T00:00:00').getDay();
+    if (slot.dayOfWeek !== dayOfWeek) {
+      throw new ApiError('วันที่ไม่ตรงกับตารางเวลา', 400, 'DATE_MISMATCH');
     }
-    if (slot.isFull || slot.currentBooked >= slot.maxCapacity) {
+    const booked = await tx.reserve.count({
+      where: { hospitalId: input.hospitalId, scheduleId: slot.id, date: input.date },
+    });
+    if (booked >= slot.maxCapacity) {
       throw new ApiError('ช่วงเวลานี้เต็มแล้ว', 409, 'SLOT_FULL');
     }
     const bookingCode = await generateBookingCode(tx);
-    const willBeFull = slot.currentBooked + 1 >= slot.maxCapacity;
-    const updatedSlot = await tx.schedule.update({
-      where: { id: slot.id },
-      data: { currentBooked: { increment: 1 }, isFull: willBeFull },
-    });
-    const queueNumber = `A${String(updatedSlot.currentBooked).padStart(3, '0')}`;
+    const queueNumber = `A${String(booked + 1).padStart(3, '0')}`;
     return tx.reserve.create({
       data: {
-        bookingCode, userId, hospitalId: slot.hospitalId, scheduleId: slot.id,
+        bookingCode, userId, hospitalId: input.hospitalId, scheduleId: slot.id,
+        date: input.date,
         purpose: input.purpose, reason: input.reason, status: 'confirmed',
         queueNumber,
       },
@@ -58,7 +58,7 @@ export async function createAppointment(userId: string, input: CreateAppointment
 export async function getMyAppointments(userId: string) {
   const rows = await prisma.reserve.findMany({
     where: { userId }, include: RESERVE_INCLUDE,
-    orderBy: [{ schedule: { date: 'asc' } }, { schedule: { startTime: 'asc' } }],
+    orderBy: [{ date: 'asc' }, { schedule: { startTime: 'asc' } }],
   });
   const today = new Date().toISOString().slice(0, 10);
   const terminal = new Set(['completed', 'cancelled', 'no_show']);

@@ -77,37 +77,9 @@ export interface Hospital {
   description: string;
 }
 
-export type ClinicCode =
-  | 'med'
-  | 'surg'
-  | 'ped'
-  | 'ob'
-  | 'ortho'
-  | 'eye'
-  | 'ent'
-  | 'dent'
-  | 'skin'
-  | 'ncd'
-  | 'psych';
-
-export const clinicLabel: Record<ClinicCode, string> = {
-  med: 'คลินิกอายุรกรรม',
-  surg: 'คลินิกศัลยกรรม',
-  ped: 'คลินิกกุมารเวชกรรม',
-  ob: 'คลินิกสูตินรีเวช',
-  ortho: 'คลินิกกระดูกและข้อ',
-  eye: 'คลินิกตา',
-  ent: 'คลินิกหู คอ จมูก',
-  dent: 'คลินิกทันตกรรม',
-  skin: 'คลินิกผิวหนัง',
-  ncd: 'คลินิกโรคไม่ติดต่อเรื้อรัง (NCD)',
-  psych: 'คลินิกจิตเวช',
-};
-
 export interface TimeSlot {
   id: string;
   hospitalId: string;
-  clinic: ClinicCode;
   date: string;
   startTime: string;
   endTime: string;
@@ -140,7 +112,6 @@ export interface Appointment {
   userId: string;
   userFullName: string;
   hospitalId: string;
-  clinic: ClinicCode;
   purpose: ServiceType;
   reason: string;
   date: string;
@@ -157,6 +128,7 @@ export interface HospitalReserveCreateBody {
   patientNationalId: string;
   hospitalId: string;
   scheduleId: string;
+  date: string;
   purpose: ServiceType;
   reason?: string;
 }

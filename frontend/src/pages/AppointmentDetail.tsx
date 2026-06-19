@@ -13,7 +13,6 @@ import {
 } from '@/lib/format';
 import {
   appointmentStatusLabel,
-  clinicLabel,
   serviceTypeLabel,
 } from '@/lib/types';
 
@@ -123,8 +122,6 @@ function AppointmentDetailInner({ id }: { id: string }) {
               <dd className="font-medium">
                 {hospital?.shortName ?? appt.hospitalId}
               </dd>
-              <dt className="text-gray-500">คลินิก</dt>
-              <dd className="font-medium">{clinicLabel[appt.clinic]}</dd>
               <dt className="text-gray-500">วัตถุประสงค์</dt>
               <dd className="font-medium">{serviceTypeLabel[appt.purpose]}</dd>
               {appt.reason && (

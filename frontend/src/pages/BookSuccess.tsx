@@ -9,7 +9,6 @@ import {
   maskNationalId,
 } from '@/lib/format';
 import {
-  clinicLabel,
   serviceTypeLabel,
 } from '@/lib/types';
 
@@ -106,8 +105,6 @@ export function BookSuccess() {
             </dd>
             <dt className="font-semibold">โรงพยาบาล</dt>
             <dd>{hospital?.shortName ?? appt.hospitalId}</dd>
-            <dt className="font-semibold">คลินิก</dt>
-            <dd>{clinicLabel[appt.clinic]}</dd>
             <dt className="font-semibold">วันที่</dt>
             <dd>{formatBuddhistDate(appt.date)}</dd>
             <dt className="font-semibold">เวลา</dt>

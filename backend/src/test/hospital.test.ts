@@ -21,12 +21,11 @@ describe('hospitals', () => {
     expect(res.body.hospitals.every((h: { zone: string }) => h.zone === 'inner')).toBe(true);
   });
 
-  it('returns hospital detail with clinics array', async () => {
+  it('returns hospital detail without clinics array', async () => {
     const res = await request(app).get('/api/hospitals/klang');
     expect(res.status).toBe(200);
     expect(res.body.hospital.id).toBe('klang');
-    expect(Array.isArray(res.body.clinics)).toBe(true);
-    expect(res.body.clinics).toContain('med');
+    expect(res.body.clinics).toBeUndefined();
   });
 
   it('404s an unknown hospital', async () => {
@@ -34,15 +33,19 @@ describe('hospitals', () => {
     expect(res.status).toBe(404);
   });
 
-  it('returns time slots for a hospital/clinic/date', async () => {
-    const hosp = await request(app).get('/api/hospitals/klang');
-    const slotDate = (await prisma.schedule.findFirst({
-      where: { hospitalId: 'klang', clinic: 'med' }, orderBy: { date: 'asc' },
-    }))!.date;
-    const res = await request(app).get(`/api/hospitals/klang/time-slots?date=${slotDate}&clinic=med`);
+  it('returns time slots for a hospital and date', async () => {
+    const slot = await prisma.schedule.findFirst({ orderBy: { startTime: 'asc' } });
+    if (!slot) throw new Error('No schedule slots found');
+    // Find a date that matches the slot's dayOfWeek
+    const today = new Date();
+    let testDate = new Date(today);
+    while (testDate.getDay() !== slot.dayOfWeek) {
+      testDate.setDate(testDate.getDate() + 1);
+    }
+    const slotDate = `${testDate.getFullYear()}-${String(testDate.getMonth() + 1).padStart(2, '0')}-${String(testDate.getDate()).padStart(2, '0')}`;
+    const res = await request(app).get(`/api/hospitals/klang/time-slots?date=${slotDate}`);
     expect(res.status).toBe(200);
     expect(res.body.slots.length).toBeGreaterThan(0);
     expect(res.body.slots[0]).toHaveProperty('capacity');
-    expect(hosp.body.clinics).toContain('med');
   });
 });

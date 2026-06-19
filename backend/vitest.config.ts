@@ -6,6 +6,6 @@ export default defineConfig({
     env: { NODE_ENV: 'test' },
     setupFiles: ['src/test/setup.ts'],
     fileParallelism: false, // tests share one Postgres test DB
-    hookTimeout: 30000,
+    hookTimeout: 90000,
   },
 });

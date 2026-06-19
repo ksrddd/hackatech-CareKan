@@ -1,10 +1,7 @@
 import { useMemo } from 'react';
 import { buddhistYear, formatThaiWeekdayShort } from '@/lib/format';
-import type { ClinicCode } from '@/lib/types';
 
 interface DateGridProps {
-  hospitalId: string;
-  clinic: ClinicCode;
   selectedDate: string | null;
   onSelect: (iso: string) => void;
   monthOffset?: number;
@@ -66,8 +63,6 @@ function buildCells(year: number, month: number): Cell[] {
 }
 
 export function DateGrid({
-  hospitalId: _hospitalId,
-  clinic: _clinic,
   selectedDate,
   onSelect,
   monthOffset = 0,

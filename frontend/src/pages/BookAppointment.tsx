@@ -12,9 +12,7 @@ import {
 } from '@/lib/format';
 import { useHospital, useHospitals } from '@/lib/hospitals';
 import {
-  clinicLabel,
   serviceTypeLabel,
-  type ClinicCode,
   type ServiceType,
   type TimeSlot,
 } from '@/lib/types';
@@ -68,7 +66,6 @@ export function BookAppointment() {
 
   const [step, setStep] = useState<Step>(1);
   const [hospitalId, setHospitalId] = useState<string>(urlHospital ?? '');
-  const [clinic, setClinic] = useState<ClinicCode>('med');
   const [purpose, setPurpose] = useState<ServiceType>('follow_up');
   const [reason, setReason] = useState('');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -88,25 +85,17 @@ export function BookAppointment() {
   const hospitals = hospitalsState.kind === 'success' ? hospitalsState.data : [];
   const hospital =
     hospitalDetailState.kind === 'success' ? hospitalDetailState.data.hospital : null;
-  const availableClinics: ClinicCode[] =
-    hospitalDetailState.kind === 'success' ? hospitalDetailState.data.clinics : ['med'];
-
-  useEffect(() => {
-    if (!availableClinics.includes(clinic)) {
-      setClinic(availableClinics[0] ?? 'med');
-    }
-  }, [availableClinics, clinic]);
 
   useEffect(() => {
     setSelectedDate(null);
     setSelectedSlot(null);
-  }, [hospitalId, clinic]);
+  }, [hospitalId]);
 
   function goNext() {
     setError(null);
     if (step === 1) {
-      if (!hospitalId || !clinic) {
-        setError('โปรดเลือกโรงพยาบาลและคลินิก');
+      if (!hospitalId) {
+        setError('โปรดเลือกโรงพยาบาล');
         return;
       }
       setStep(2);
@@ -127,10 +116,10 @@ export function BookAppointment() {
     setError(null);
     const appt = await create.run({
       hospitalId,
-      clinic,
       purpose,
       reason,
       slotId: selectedSlot.id,
+      date: selectedDate,
     });
     if (appt) navigate(`/book/success/${appt.id}`);
   }
@@ -167,7 +156,7 @@ export function BookAppointment() {
 
       <BookingStepper
         steps={[
-          { label: 'เลือกโรงพยาบาลและคลินิก' },
+          { label: 'เลือกโรงพยาบาล' },
           { label: 'เลือกวันและเวลา' },
           { label: 'ตรวจสอบและยืนยัน' },
         ]}
@@ -343,8 +332,6 @@ export function BookAppointment() {
                   2.1 เลือกวันที่ต้องการเข้ารับบริการ
                 </h2>
                 <DateGrid
-                  hospitalId={hospitalId}
-                  clinic={clinic}
                   selectedDate={selectedDate}
                   onSelect={(d) => {
                     setSelectedDate(d);
@@ -363,7 +350,6 @@ export function BookAppointment() {
                   </h2>
                   <TimeSlotGrid
                     hospitalId={hospitalId}
-                    clinic={clinic}
                     date={selectedDate}
                     selectedSlotId={selectedSlot?.id ?? null}
                     onSelect={setSelectedSlot}
@@ -388,8 +374,6 @@ export function BookAppointment() {
                 <dd className="font-medium">
                   {hospital ? hospital.shortName : hospitalId}
                 </dd>
-                <dt className="text-gray-500">คลินิก</dt>
-                <dd className="font-medium">{clinicLabel[clinic]}</dd>
                 <dt className="text-gray-500">วัตถุประสงค์</dt>
                 <dd className="font-medium">{serviceTypeLabel[purpose]}</dd>
                 {reason && (
@@ -438,8 +422,6 @@ export function BookAppointment() {
             </p>
             <hr className="my-3 border-gov-border" />
             <p>
-              <strong>{clinicLabel[clinic]}</strong>
-              <br />
               <span className="text-sm text-gray-500">
                 {serviceTypeLabel[purpose]}
               </span>

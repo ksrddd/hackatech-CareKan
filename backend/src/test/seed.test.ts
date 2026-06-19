@@ -20,10 +20,14 @@ describe('seed', () => {
     expect(u).not.toBeNull();
   });
 
-  it('keeps schedule.currentBooked consistent with reserve count', async () => {
-    const schedules = await prisma.schedule.findMany({ include: { reserves: true } });
-    for (const s of schedules) {
-      expect(s.currentBooked).toBeGreaterThanOrEqual(s.reserves.length);
+  it('creates 70 shared schedule template slots (5 weekdays × 14 time slots)', async () => {
+    expect(await prisma.schedule.count()).toBe(70);
+  });
+
+  it('all reserves have a date field', async () => {
+    const reserves = await prisma.reserve.findMany();
+    for (const r of reserves) {
+      expect(r.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     }
   });
 });

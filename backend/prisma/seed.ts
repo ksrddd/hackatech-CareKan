@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PrismaClient, type ClinicCode, type InsuranceRight, type ServiceType } from '@prisma/client';
+import { PrismaClient, type InsuranceRight, type ServiceType } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { zoneForDistrict } from '../data/bangkok-zones.js';
 
@@ -70,6 +70,11 @@ function nextWeekdayFrom(base: string, offset: number): string {
   while (isWeekend(iso)) iso = addDaysISO(iso, 1);
   return iso;
 }
+function pastWeekdayFrom(base: string, offset: number): string {
+  let iso = addDaysISO(base, -Math.abs(offset));
+  while (isWeekend(iso)) iso = addDaysISO(iso, -1);
+  return iso;
+}
 
 const TIME_RANGES: Array<[string, string]> = [
   ['08:00', '08:30'], ['08:30', '09:00'], ['09:00', '09:30'], ['09:30', '10:00'],
@@ -77,8 +82,6 @@ const TIME_RANGES: Array<[string, string]> = [
   ['13:00', '13:30'], ['13:30', '14:00'], ['14:00', '14:30'], ['14:30', '15:00'],
   ['15:00', '15:30'], ['15:30', '16:00'],
 ];
-
-const CLINICS: ClinicCode[] = ['med', 'surg', 'ped', 'ortho', 'eye', 'ent', 'dent'];
 
 const HOSPITALS = [
   {
@@ -159,7 +162,6 @@ interface SeedReserve {
   bookingCode: string;
   nationalId: string;
   hospitalId: string;
-  clinic: ClinicCode;
   purpose: string;
   reason: string;
   date: string;
@@ -170,78 +172,53 @@ interface SeedReserve {
 }
 
 export async function runSeed(prisma: PrismaClient): Promise<void> {
-  // 1. Hospitals
-  for (const h of HOSPITALS) {
-    await prisma.hospital.upsert({
-      where: { id: h.id },
-      update: {},
-      create: {
-        id: h.id, code: h.code, name: h.name, shortName: h.shortName,
-        address: h.address, district: h.district, zone: h.zone as never,
-        phone: h.phone, openingHours: h.openingHours, description: h.description,
-        services: h.services as never, rightsAccepted: h.rightsAccepted as never,
-        mockDistanceKm: h.mockDistanceKm,
-      },
-    });
-  }
+  // 1. Hospitals — batch insert to minimise round trips.
+  await prisma.hospital.createMany({
+    data: HOSPITALS.map((h) => ({
+      id: h.id, code: h.code, name: h.name, shortName: h.shortName,
+      address: h.address, district: h.district, zone: h.zone as never,
+      phone: h.phone, openingHours: h.openingHours, description: h.description,
+      services: h.services as never, rightsAccepted: h.rightsAccepted as never,
+      mockDistanceKm: h.mockDistanceKm,
+    })),
+    skipDuplicates: true,
+  });
 
-  // 1b. Additional Bangkok government hospitals.
+  // 1b. Additional Bangkok government hospitals — build batch, insert once.
   const existingShortNames = new Set<string>(HOSPITALS.map((h) => h.shortName));
-  let addedGov = 0;
-  for (const g of loadGovHospitals()) {
-    if (existingShortNames.has(g.name)) continue;
-    const id = slugIdFromName(g.name);
-    const district = g.dname?.trim() ?? '';
-    const distanceKm =
-      g.lat != null && g.lng != null
-        ? Math.round(haversineKm(BKK_CENTER_LAT, BKK_CENTER_LNG, g.lat, g.lng) * 10) / 10
-        : 5.0;
-    await prisma.hospital.upsert({
-      where: { id },
-      update: {},
-      create: {
+  const govRows = loadGovHospitals()
+    .filter((g) => !existingShortNames.has(g.name))
+    .map((g) => {
+      const id = slugIdFromName(g.name);
+      const district = g.dname?.trim() ?? '';
+      const distanceKm =
+        g.lat != null && g.lng != null
+          ? Math.round(haversineKm(BKK_CENTER_LAT, BKK_CENTER_LNG, g.lat, g.lng) * 10) / 10
+          : 5.0;
+      return {
         id, code: 'รพ', name: g.name, shortName: g.name, address: g.address,
         district, zone: zoneForDistrict(district),
         phone: (g.tel ?? '').trim() || '-',
         openingHours: 'จันทร์–ศุกร์ 08:00–16:00',
         description: [g.belong, g.type].filter(Boolean).join(' · ') || 'โรงพยาบาลรัฐในกรุงเทพมหานคร',
-        services: DEFAULT_SERVICES, rightsAccepted: ALL_RIGHTS,
+        services: DEFAULT_SERVICES as never,
+        rightsAccepted: ALL_RIGHTS as never,
         mockDistanceKm: distanceKm,
-      },
+      };
     });
-    addedGov++;
-  }
+  const { count: addedGov } = await prisma.hospital.createMany({ data: govRows, skipDuplicates: true });
   console.log(`Inserted ${addedGov} additional government hospitals from data.go.th`);
 
-  // 2. Schedules: next 14 weekdays × each clinic × time ranges, capacity 6.
-  const base = todayISO();
-  const dates: string[] = [];
-  for (let i = 0; i < 25 && dates.length < 14; i++) {
-    const iso = addDaysISO(base, i);
-    if (!isWeekend(iso)) dates.push(iso);
-  }
-
-  // Collect all rows first, then insert in chunks to avoid timeout on Railway
-  const scheduleRows = HOSPITALS.flatMap((h) =>
-    CLINICS.flatMap((clinic) =>
-      dates.flatMap((date) =>
-        TIME_RANGES.map(([startTime, endTime]) => ({
-          hospitalId: h.id, clinic, date, startTime, endTime,
-          maxCapacity: 6, currentBooked: 0, isFull: false,
-        })),
-      ),
-    ),
+  // 2. Schedules: shared weekly template — Mon–Fri × time ranges, capacity 6.
+  // 5 weekdays × 14 time slots = 70 rows total (shared across all hospitals).
+  const WEEKDAYS = [1, 2, 3, 4, 5];
+  const scheduleRows = WEEKDAYS.flatMap((dayOfWeek) =>
+    TIME_RANGES.map(([startTime, endTime]) => ({
+      dayOfWeek, startTime, endTime, maxCapacity: 6,
+    })),
   );
-
-  const CHUNK = 500;
-  for (let i = 0; i < scheduleRows.length; i += CHUNK) {
-    await prisma.schedule.createMany({
-      data: scheduleRows.slice(i, i + CHUNK),
-      skipDuplicates: true,
-    });
-    console.log(`  Schedules: ${Math.min(i + CHUNK, scheduleRows.length)}/${scheduleRows.length}`);
-  }
-  console.log(`✓ ${scheduleRows.length} schedule slots seeded for ${HOSPITALS.length} hospitals`);
+  await prisma.schedule.createMany({ data: scheduleRows, skipDuplicates: true });
+  console.log(`✓ ${scheduleRows.length} schedule slots seeded (shared weekly template)`);
 
   // 3. Demo citizen user.
   const pwd = await bcrypt.hash('care1234', 10);
@@ -257,65 +234,60 @@ export async function runSeed(prisma: PrismaClient): Promise<void> {
     },
   });
 
-  // 4. Demo reserves (2 upcoming, 3 history).
-  const reserves: SeedReserve[] = [
+  // 4. Demo reserves — pre-load all slots in one query, then batch insert.
+  const base = todayISO();
+  const reserveDefs: SeedReserve[] = [
     {
       bookingCode: 'CK-A1001X', nationalId: '1234567890123', hospitalId: 'klang',
-      clinic: 'med', purpose: 'follow_up', reason: 'ติดตามอาการความดันสูง',
+      purpose: 'follow_up', reason: 'ติดตามอาการความดันสูง',
       date: nextWeekdayFrom(base, 7), startTime: '09:00', endTime: '09:30',
-      queueNumber: 'A045', status: 'confirmed',
+      queueNumber: 'A001', status: 'confirmed',
     },
     {
       bookingCode: 'CK-A1002X', nationalId: '1234567890123', hospitalId: 'klang',
-      clinic: 'eye', purpose: 'opd', reason: 'ตรวจสายตา',
+      purpose: 'opd', reason: 'ตรวจสุขภาพ',
       date: nextWeekdayFrom(base, 14), startTime: '13:30', endTime: '14:00',
-      queueNumber: 'A012', status: 'pending',
+      queueNumber: 'A001', status: 'pending',
     },
     {
       bookingCode: 'CK-AH1X01', nationalId: '1234567890123', hospitalId: 'klang',
-      clinic: 'med', purpose: 'follow_up', reason: 'ติดตามความดัน',
-      date: addDaysISO(base, -14), startTime: '08:30', endTime: '09:00',
-      queueNumber: 'A012', status: 'completed',
+      purpose: 'follow_up', reason: 'ติดตามความดัน',
+      date: pastWeekdayFrom(base, 14), startTime: '08:30', endTime: '09:00',
+      queueNumber: 'A001', status: 'completed',
     },
     {
       bookingCode: 'CK-AH2X02', nationalId: '1234567890123', hospitalId: 'klang',
-      clinic: 'dent', purpose: 'opd', reason: 'ขูดหินปูน',
-      date: addDaysISO(base, -28), startTime: '10:00', endTime: '10:30',
-      queueNumber: 'A034', status: 'completed',
+      purpose: 'opd', reason: 'ขูดหินปูน',
+      date: pastWeekdayFrom(base, 28), startTime: '10:00', endTime: '10:30',
+      queueNumber: 'A001', status: 'completed',
     },
     {
       bookingCode: 'CK-AH3X03', nationalId: '1234567890123', hospitalId: 'klang',
-      clinic: 'eye', purpose: 'opd', reason: 'ตรวจสายตา',
-      date: addDaysISO(base, -55), startTime: '14:00', endTime: '14:30',
-      queueNumber: 'A018', status: 'no_show',
+      purpose: 'opd', reason: 'ตรวจสายตา',
+      date: pastWeekdayFrom(base, 55), startTime: '14:00', endTime: '14:30',
+      queueNumber: 'A001', status: 'no_show',
     },
   ];
 
-  for (const r of reserves) {
-    const schedule = await prisma.schedule.upsert({
-      where: { slot_identity: { hospitalId: r.hospitalId, clinic: r.clinic as ClinicCode, date: r.date, startTime: r.startTime } },
-      update: {},
-      create: {
-        hospitalId: r.hospitalId, clinic: r.clinic as ClinicCode,
-        date: r.date, startTime: r.startTime, endTime: r.endTime,
-        maxCapacity: 6, currentBooked: 0,
-      },
-    });
-    await prisma.reserve.upsert({
-      where: { bookingCode: r.bookingCode },
-      update: {},
-      create: {
-        bookingCode: r.bookingCode, userId: citizen.id,
-        hospitalId: r.hospitalId, scheduleId: schedule.id,
-        purpose: r.purpose as never, reason: r.reason,
-        status: r.status as never, queueNumber: r.queueNumber,
-      },
-    });
-    await prisma.schedule.update({
-      where: { id: schedule.id },
-      data: { currentBooked: { increment: 1 } },
-    });
-  }
+  const allSlots = await prisma.schedule.findMany();
+  const slotMap = new Map(allSlots.map((s) => [`${s.dayOfWeek}:${s.startTime}`, s]));
+
+  const reserveRows = reserveDefs.flatMap((r) => {
+    const dayOfWeek = new Date(r.date + 'T00:00:00').getDay();
+    const slot = slotMap.get(`${dayOfWeek}:${r.startTime}`);
+    if (!slot) {
+      console.warn(`⚠️  No schedule template for dayOfWeek=${dayOfWeek} startTime=${r.startTime} — skipping demo reserve ${r.bookingCode}`);
+      return [];
+    }
+    return [{
+      bookingCode: r.bookingCode, userId: citizen.id,
+      hospitalId: r.hospitalId, scheduleId: slot.id,
+      date: r.date,
+      purpose: r.purpose as never, reason: r.reason,
+      status: r.status as never, queueNumber: r.queueNumber,
+    }];
+  });
+  await prisma.reserve.createMany({ data: reserveRows, skipDuplicates: true });
 }
 
 // CLI entry
