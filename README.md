@@ -1,4 +1,4 @@
-# CareKan
+# Hackatech -- CareKan
 
 CareKan is a hospital appointment booking platform for Thai citizens.
 
@@ -88,3 +88,4 @@ Open **http://localhost:5173**
 |---------|---------------|
 | citizen | 1234567890123 |
 | admin   | 9876543210987 |
+
