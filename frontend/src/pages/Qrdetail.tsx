@@ -13,25 +13,30 @@ export default function QrDetail() {
         refetch();
     }, [refetch]);
 
-    // สถานะกำลังโหลด
     if (!state || state.kind === 'submitting') {
         return (
-            <div className="min-h-screen flex items-center justify-center text-gray-500">
-                กำลังโหลดข้อมูล...
+            <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
+                <img src="/carekan-logo.jpg" alt="CareKan" className="h-10 mb-4 object-contain" />
+                <p className="text-gray-500 text-sm">กำลังโหลดข้อมูล...</p>
             </div>
         );
     }
 
-    // สถานะเมื่อเกิดข้อผิดพลาด หรือไม่พบข้อมูล
     if (state.kind === 'error') {
         return (
-            <div className="max-w-md mx-auto mt-10 text-center px-4">
-                <div className="bg-white border rounded-xl p-6 shadow-sm">
-                    <p className="text-xl font-bold text-red-500">
-                        ไม่พบข้อมูลคิว
-                    </p>
-                    <p className="text-gray-500 mt-2">
-                        QR Code นี้ไม่ถูกต้อง หรือไม่มีสิทธิ์เข้าถึง
+            <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
+                <div className="w-full max-w-sm bg-white border border-gray-100 rounded-xl shadow-sm p-8 text-center">
+                    <img src="/carekan-logo.jpg" alt="CareKan" className="h-10 mx-auto mb-5 object-contain" />
+                    <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="12" y1="8" x2="12" y2="12" />
+                            <line x1="12" y1="16" x2="12.01" y2="16" />
+                        </svg>
+                    </div>
+                    <p className="text-lg font-bold text-gray-800 mb-2">ไม่พบข้อมูลคิว</p>
+                    <p className="text-sm text-gray-500 leading-relaxed">
+                        QR Code นี้ไม่ถูกต้อง<br className="hidden sm:block" /> หรือหมดอายุแล้ว
                     </p>
                 </div>
             </div>
