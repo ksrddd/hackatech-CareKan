@@ -14,7 +14,7 @@ export function buildApp(): Express {
   app.use(express.json());
 
   app.get('/api/health', (_req, res) => {
-    res.json({ ok: true });
+    res.json({ ok: true, service: 'carekan-backend', version: '1.0.0' });
   });
 
   app.use('/api', router);
