@@ -1,4 +1,4 @@
-# Hackatech -- CareKan แคร์กันไม่ขาดตอน
+# Hackatech -- "CareKan แคร์กันไม่ขาดตอน"
 
 CareKan is a hospital appointment booking platform for Thai citizens.
 
