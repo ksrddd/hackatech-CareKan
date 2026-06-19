@@ -74,3 +74,8 @@ export async function getAppointmentForOwner(id: string, userId: string) {
   if (!r || r.userId !== userId) throw new ApiError('ไม่พบนัดหมาย', 404, 'NOT_FOUND');
   return toAppointmentDto(r);
 }
+export async function getQrAppointment(id: string) {
+  const r = await prisma.reserve.findUnique({ where: { id }, include: RESERVE_INCLUDE });
+  if (!r) throw new ApiError('ไม่พบนัดหมาย', 404, 'NOT_FOUND');
+  return toAppointmentDto(r);
+}

@@ -22,6 +22,7 @@ router.get('/hospitals/:id/time-slots', asyncHandler(hospital.timeSlots));
 router.post('/appointments', authGuard, asyncHandler(appt.create));
 router.get('/appointments/me', authGuard, asyncHandler(appt.mine));
 router.get('/appointments/:id', authGuard, asyncHandler(appt.detail));
+router.get('/scanned/:id', asyncHandler(appt.qr_check));
 
 // ── API key request form (citizen-facing) ─────────────────────────
 router.post('/api-keys/requests', authGuard, asyncHandler(apiKey.submit));

@@ -7,18 +7,19 @@ import { PageLoader } from './components/PageLoader';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AuthProvider } from './lib/auth';
 import { ElderlyModeProvider } from './lib/elderlyMode';
+import QrDetail from './pages/Qrdetail';
 
-const Landing         = lazy(() => import('./pages/Landing').then(m => ({ default: m.Landing })));
-const Login           = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
-const Register        = lazy(() => import('./pages/Register').then(m => ({ default: m.Register })));
-const HospitalSearch  = lazy(() => import('./pages/HospitalSearch').then(m => ({ default: m.HospitalSearch })));
-const HospitalDetail  = lazy(() => import('./pages/HospitalDetail').then(m => ({ default: m.HospitalDetail })));
-const MyAppointments  = lazy(() => import('./pages/MyAppointments').then(m => ({ default: m.MyAppointments })));
+const Landing = lazy(() => import('./pages/Landing').then(m => ({ default: m.Landing })));
+const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
+const Register = lazy(() => import('./pages/Register').then(m => ({ default: m.Register })));
+const HospitalSearch = lazy(() => import('./pages/HospitalSearch').then(m => ({ default: m.HospitalSearch })));
+const HospitalDetail = lazy(() => import('./pages/HospitalDetail').then(m => ({ default: m.HospitalDetail })));
+const MyAppointments = lazy(() => import('./pages/MyAppointments').then(m => ({ default: m.MyAppointments })));
 const AppointmentDetail = lazy(() => import('./pages/AppointmentDetail').then(m => ({ default: m.AppointmentDetail })));
 const BookAppointment = lazy(() => import('./pages/BookAppointment').then(m => ({ default: m.BookAppointment })));
-const BookSuccess     = lazy(() => import('./pages/BookSuccess').then(m => ({ default: m.BookSuccess })));
-const Profile         = lazy(() => import('./pages/Profile').then(m => ({ default: m.Profile })));
-const RequestApiKey   = lazy(() => import('./pages/RequestApiKey').then(m => ({ default: m.RequestApiKey })));
+const BookSuccess = lazy(() => import('./pages/BookSuccess').then(m => ({ default: m.BookSuccess })));
+const Profile = lazy(() => import('./pages/Profile').then(m => ({ default: m.Profile })));
+const RequestApiKey = lazy(() => import('./pages/RequestApiKey').then(m => ({ default: m.RequestApiKey })));
 
 
 function NotFound() {
@@ -46,6 +47,8 @@ export function App() {
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route element={<CitizenLayout />}>
+                <Route path="scanned/:id" element={<QrDetail />} />
+
                 <Route index element={<Landing />} />
                 <Route element={<GuestRoute />}>
                   <Route path="login" element={<Login />} />

@@ -70,6 +70,13 @@ export const api = {
       path: `/appointments/${encodeURIComponent(id)}`,
       signal,
     }),
+    
+  getQrAppointment: (id: string, signal?: AbortSignal) =>
+    apiFetch<AppointmentResponse>({
+      method: 'GET',
+      path: `/scanned/${encodeURIComponent(id)}`,
+      signal,
+    }),
 
   submitApiKeyRequest: (body: ApiKeyRequestForm, signal?: AbortSignal) =>
     apiFetch<ApiKeySubmittedResponse, ApiKeyRequestForm>({

@@ -24,8 +24,7 @@ function AppointmentDetailInner({ id }: { id: string }) {
 
   // 5-second live queue polling
   useEffect(() => {
-    const t = setInterval(refetch, 5000);
-    return () => clearInterval(t);
+    refetch();
   }, [refetch]);
 
   // Fetch hospital name once we have the hospitalId (from success state)
@@ -152,10 +151,7 @@ function AppointmentDetailInner({ id }: { id: string }) {
             <section className="bg-white border border-gov-border p-5">
               <div className="flex justify-between items-center pb-2 mb-3 border-b border-gov-border">
                 <h2 className="text-lg font-semibold">สถานะคิวสด</h2>
-                <span className="text-xs text-gray-500 flex items-center gap-1">
-                  <span className="inline-block w-2 h-2 bg-gov-ok-ink rounded-full" />
-                  อัปเดตเองทุก 5 วินาที
-                </span>
+               
               </div>
               <div className="grid sm:grid-cols-2 gap-4 text-center">
                 <div className="border-2 border-gov-wait-ink p-4">
@@ -190,7 +186,7 @@ function AppointmentDetailInner({ id }: { id: string }) {
             <h3 className="text-sm uppercase tracking-wider text-gray-500 mb-3">
               QR ใบนัด
             </h3>
-            <QrStub />
+            <QrStub queue_id={appt.id} fullname={appt.userFullName} status={appt.status} />
             <p className="text-xs text-gray-500 mt-2">
               แสดงที่จุดเช็กอินวันนัด
             </p>

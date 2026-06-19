@@ -18,3 +18,10 @@ export async function detail(req: Request, res: Response): Promise<void> {
   const appointment = await svc.getAppointmentForOwner(id, req.user!.id);
   res.json({ appointment } satisfies AppointmentResponse);
 }
+
+export async function qr_check(req: Request, res: Response): Promise<void> {
+  const id = req.params['id'] ?? '';
+  const appointment = await svc.getQrAppointment(id);
+  res.json({ appointment } satisfies AppointmentResponse);
+}
+
