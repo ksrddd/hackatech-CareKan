@@ -29,8 +29,12 @@ export function PageLoader() {
     >
       {/* Logo row */}
       <div className="flex items-center gap-3 mb-2">
-        <div className="ck-pl-badge w-13 h-13 w-[52px] h-[52px] grid place-items-center bg-gov-primary text-white font-bold text-2xl border-2 border-gov-primary-dark select-none">
-          C
+        <div className="ck-pl-badge w-[52px] h-[52px] shrink-0">
+          <img
+            src="/carekan-logo.jpg"
+            alt="CareKan"
+            className="w-full h-full object-contain"
+          />
         </div>
         <span className="ck-pl-name text-[1.75rem] font-bold text-gov-ink tracking-tight leading-none">
           CareKan
