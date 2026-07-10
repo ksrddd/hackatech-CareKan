@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 import type { Appointment } from '../../../shared/types';
 import { ApiError } from '../common/errors/api-error.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { toAppointmentDto } from '../services/mappers.js';
+import { toAppointmentDto } from '../mappers/mappers.js';
 import type { AuthenticatedHospitalKey } from './hospital-key.service.js';
 import type { CreateHospitalReserveInput, HospitalReserveStatus } from './hospital-reserve.schemas.js';
 

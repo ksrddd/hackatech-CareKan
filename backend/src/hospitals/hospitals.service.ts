@@ -3,7 +3,7 @@ import type { Zone } from '@prisma/client';
 import type { HospitalsQuery } from '../../../shared/api';
 import { ApiError } from '../common/errors/api-error.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { toHospitalDto, toTimeSlotDto } from '../services/mappers.js';
+import { toHospitalDto, toTimeSlotDto } from '../mappers/mappers.js';
 
 @Injectable()
 export class HospitalsService {

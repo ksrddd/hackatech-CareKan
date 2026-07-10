@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 import type { CreateAppointmentRequest } from '../../../shared/api';
 import { ApiError } from '../common/errors/api-error.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { toAppointmentDto } from '../services/mappers.js';
+import { toAppointmentDto } from '../mappers/mappers.js';
 
 const REF_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 

@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { PrismaClient, type InsuranceRight, type ServiceType } from '@prisma/client';

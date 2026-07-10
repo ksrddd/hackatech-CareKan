@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 import type { LoginResponse, MeResponse, RegisterRequest } from '../../../shared/api';
 import { ApiError } from '../common/errors/api-error.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { toUserDto } from '../services/mappers.js';
+import { toUserDto } from '../mappers/mappers.js';
 
 export interface TokenPayload {
   sub: string;
