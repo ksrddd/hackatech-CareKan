@@ -11,6 +11,12 @@
 
 # Phase 1 — Migration to NestJS + Supabase
 
+> **สถานะการทำจริง (2026-07-10)**: Stage 1–3 (NestJS migration) **เสร็จแล้ว** บน branch `backend-nest`
+> — เทสต์ 38/38 เขียว, contract regression 20/20 ตรงกับ Express เดิม, build + boot ผ่าน
+> เหลือ Stage 0/4 (สลับ DB ไป Supabase + deploy Railway/Render) ซึ่งรอ connection string จากเจ้าของโปรเจกต์
+> จุดที่ทำต่างจากแผน: §5.5 (Node16 แทน suffix-stripping), §7 (คง Vitest+SWC แทน Jest),
+> dev script ใช้ `tsc-watch` แทน `@nestjs/cli` (ไม่ต้องมี nest-cli.json), auth ใช้ `jsonwebtoken` ตรงๆ (§1.3)
+
 ## 1. เป้าหมายและขอบเขต
 
 ### 1.1 เป้าหมาย
@@ -27,14 +33,14 @@
 - โครงสร้างโค้ด: layered แบบ manual → NestJS module + DI container
 - Database host: Postgres ใน Docker/Railway → Supabase Postgres
 - Deployment: Vercel serverless → **Railway หรือ Render** (long-lived Node process)
-- Test runner: Vitest → Jest + `@nestjs/testing` (Nest ecosystem default)
+- ~~Test runner: Vitest → Jest~~ → **คง Vitest ไว้** + `unplugin-swc` (สูตรจากเอกสาร NestJS) — esbuild ไม่ emit decorator metadata ที่ Nest DI ต้องใช้ จึงสลับ transformer เป็น SWC แทน ได้ผลคือเทสต์เดิมแก้แค่ bootstrap (`makeNestApp()` + `beforeAll`) ส่วน assertion ไม่แตะเลย = contract fidelity สูงกว่า port ไป Jest
 
 ### 1.3 สิ่งที่ **จะไม่** เปลี่ยน (ตัดสินใจแล้ว)
 
 | หัวข้อ | คงเดิม | เหตุผล |
 |--------|--------|--------|
 | **ORM** | Prisma 5 | Supabase คือ Postgres ธรรมดา — `schema.prisma` และ migration ทั้ง 7 ไฟล์ใช้ต่อได้ทันที ไม่ต้อง port อะไรเลย |
-| **Auth** | JWT ที่เราออกเอง (`@nestjs/jwt`) | ไม่ใช้ Supabase Auth เพราะ GoTrue ผูกกับ email/phone ไม่รองรับ login ด้วยเลขบัตร 13 หลักโดยตรง และการย้ายจะบังคับให้แก้ frontend ด้วย — ผิดเป้าหมายเฟสนี้ |
+| **Auth** | JWT ที่เราออกเอง (`jsonwebtoken` ตรงๆ ไม่ผ่าน `@nestjs/jwt`) | ไม่ใช้ Supabase Auth เพราะ GoTrue ผูกกับ email/phone ไม่รองรับ login ด้วยเลขบัตร 13 หลักโดยตรง และการย้ายจะบังคับให้แก้ frontend ด้วย — ผิดเป้าหมายเฟสนี้ ส่วน `@nestjs/jwt` ก็ตัดออก: logic เดิมมีแค่ ~15 บรรทัด ห่อ lib ตัวเดิมไว้เฉยๆ ไม่คุ้มความเสี่ยง |
 | **Domain logic** | `services/*.ts` ทั้งหมด | ย้ายเข้า class + `@Injectable()` แต่ **ตัว body ของฟังก์ชันไม่แตะ** |
 | **Validation** | Zod | ไม่ย้ายไป `class-validator` เพราะ `shared/` และ error shape ผูกกับ Zod อยู่ (ดู §5.3) |
 | **Wire contract** | `shared/api.ts`, `shared/types.ts` | ไฟล์ในโฟลเดอร์ `shared/` **ห้ามแก้** ตลอดเฟสนี้ — ถือเป็น frozen contract |
@@ -336,11 +342,14 @@ Nest มาพร้อม `ValidationPipe` + `class-validator` แต่เร�
 
 โปรเจกต์ปัจจุบันเป็น `"type": "module"` + `moduleResolution: "Bundler"` + import ลงท้าย `.js`
 
-NestJS decorator + DI ทำงานได้ดีที่สุดบน CommonJS (`emitDecoratorMetadata` + `reflect-metadata`) ecosystem ส่วนใหญ่ (`@nestjs/cli`, Jest) ตั้งค่ามาสำหรับ CJS
+NestJS decorator + DI ทำงานได้ดีที่สุดบน CommonJS (`emitDecoratorMetadata` + `reflect-metadata`)
 
-**ตัดสินใจ**: เปลี่ยนเป็น **CommonJS** (`"module": "commonjs"`, ลบ `"type": "module"`) — ต้องตามลบ `.js` extension ในทุก import statement (`~40 จุด`) ทำครั้งเดียวด้วย codemod / find-replace
+**ตัดสินใจ (ตามที่ทำจริง)**: เปลี่ยนเป็น CJS ผ่าน **`"module": "Node16"`** แทน `"commonjs"` ตรงๆ — โหมดนี้ TypeScript ยัง map `./foo.js` → `./foo.ts` ให้ จึง**ไม่ต้องลบ `.js` suffix แม้แต่จุดเดียว** (แผนเดิมประเมินไว้ ~40 จุด) แค่:
+- ลบ `"type": "module"` จาก `package.json` ของ backend และ `shared/`
+- เพิ่ม `experimentalDecorators` + `emitDecoratorMetadata`
+- แก้ `import.meta.url` → `__dirname` (มีจริงแค่ 1 จุดใน `prisma/seed.ts`)
 
-ผลข้างเคียง: `import.meta.url` ใน `prisma/seed.ts` และ `data/bangkok-zones.ts` ใช้ไม่ได้ → เปลี่ยนเป็น `__dirname` (2 จุด)
+**Bug ที่เจอระหว่างทำ**: `rootDir: "../.."` เดิมชี้เลย repo root ไปหนึ่งชั้น ทำให้ `npm start` เดิมพังมาตลอด (ไม่มีใครสังเกตเพราะ deploy ผ่าน Vercel ที่ build `api/index.ts` เอง) — แก้เป็น `".."`
 
 ### 5.6 🟡 Status code ที่ Nest เปลี่ยนให้เองโดยไม่บอก
 
