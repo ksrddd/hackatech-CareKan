@@ -6,6 +6,6 @@ describe('GET /api/health', () => {
   it('returns ok', async () => {
     const res = await request(makeTestApp()).get('/api/health');
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ ok: true });
+    expect(res.body).toEqual({ ok: true, service: 'carekan-backend', version: '1.0.0' });
   });
 });
