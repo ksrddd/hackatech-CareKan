@@ -11,11 +11,13 @@
 
 # Phase 1 — Migration to NestJS + Supabase
 
-> **สถานะการทำจริง (2026-07-10)**: Stage 1–3 (NestJS migration) **เสร็จแล้ว** บน branch `backend-nest`
+> **สถานะการทำจริง (2026-07-10)**: Stage 1–3 (NestJS migration) + Stage 0/4 (Supabase) **เสร็จแล้ว** บน branch `backend-nest`
 > — เทสต์ 38/38 เขียว, contract regression 20/20 ตรงกับ Express เดิม, build + boot ผ่าน
-> เหลือ Stage 0/4 (สลับ DB ไป Supabase + deploy Railway/Render) ซึ่งรอ connection string จากเจ้าของโปรเจกต์
+> — Supabase: `directUrl` เพิ่มใน schema, migrate deploy + seed (45 รพ. / 70 slots) + booking smoke test ผ่านบน Supabase จริง
+> **เหลืออย่างเดียว: deploy ขึ้น Railway/Render** (Stage 4 ข้อ 23–29)
 > จุดที่ทำต่างจากแผน: §5.5 (Node16 แทน suffix-stripping), §7 (คง Vitest+SWC แทน Jest),
-> dev script ใช้ `tsc-watch` แทน `@nestjs/cli` (ไม่ต้องมี nest-cli.json), auth ใช้ `jsonwebtoken` ตรงๆ (§1.3)
+> dev script ใช้ `tsc-watch` แทน `@nestjs/cli` (ไม่ต้องมี nest-cli.json), auth ใช้ `jsonwebtoken` ตรงๆ (§1.3),
+> `.env.test` คงชี้ Docker local + guard ใน `setup.ts` กัน resetDb() ยิงใส่ Supabase
 
 ## 1. เป้าหมายและขอบเขต
 
