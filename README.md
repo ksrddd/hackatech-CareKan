@@ -2,7 +2,7 @@
 
 CareKan is a hospital appointment booking platform for Thai citizens.
 
-- **Backend** — NestJS + Prisma, hosted Postgres on **Supabase** (no local database needed)
+- **Backend** — NestJS + Prisma, hosted Postgres on **Supabase** 
 - **Frontend** — React + Vite
 
 > Because the database runs on Supabase, **you do not need Docker to run the app.**
