@@ -8,26 +8,26 @@
 | **Branch** | `backend-nest` |
 | **Version** | 1.0.0 |
 | **Status** | Phase 1 delivered (deploy pending) · Phase 2 specified |
-| **Last updated** | 2026-07-11 |
+| **Last updated** | 2026-07-12 |
 
 ---
 
 ## 1. Overview
 
-CareKan backend คือ REST API สำหรับระบบจองคิวโรงพยาบาลรัฐในกรุงเทพมหานคร ให้บริการแก่ 3 กลุ่มผู้ใช้:
+The CareKan backend is a REST API for a public-hospital appointment booking system in Bangkok. It serves three classes of consumer:
 
-1. **Citizen** — ประชาชนที่ล็อกอินด้วยเลขบัตรประชาชน (JWT) เพื่อค้นหาโรงพยาบาล จองคิว และดูใบนัด/QR
-2. **Hospital systems** — ระบบของโรงพยาบาลที่เรียก API แบบ server-to-server ด้วย API key เพื่อสร้าง/อัปเดตการจอง
-3. **LINE Official Account** — webhook สำหรับตอบข้อความและส่ง Flex Message
+1. **Citizen** — end users who authenticate with a national ID (JWT) to search hospitals, book appointments, and view booking slips / QR codes.
+2. **Hospital systems** — server-to-server integrations that call the API with an API key to create and update reservations.
+3. **LINE Official Account** — a webhook that replies to messages and sends Flex Messages.
 
-เอกสารนี้กำหนดสถาปัตยกรรม, API contract, data model, security, และกระบวนการ deploy ของระบบปัจจุบัน (Phase 1) รวมถึงข้อกำหนดของงานฟีเจอร์ในอนาคต (Phase 2)
+This document defines the architecture, API contract, data model, security, and deployment of the current system (Phase 1, as-built), and specifies the planned feature work (Phase 2).
 
 ### 1.1 Scope
 
-| Phase | ขอบเขต | สถานะ |
-|-------|--------|-------|
-| **Phase 1** | ย้าย runtime จาก Express เป็น NestJS และย้าย database ไป Supabase โดยคง API contract เดิมทุกประการ | Delivered — เหลือ production deployment |
-| **Phase 2** | เพิ่มฟีเจอร์ตลอด patient journey (ก่อน/ระหว่าง/หลังการรักษา) แบบ additive | Specified — §11 |
+| Phase | Scope | Status |
+|-------|-------|--------|
+| **Phase 1** | Migrate the runtime from Express to NestJS and the database to Supabase while preserving the existing API contract exactly | Delivered — production deployment pending |
+| **Phase 2** | Add patient-journey features (before / during / after treatment) additively | Specified — §11 |
 
 ---
 
@@ -35,26 +35,26 @@ CareKan backend คือ REST API สำหรับระบบจองคิ
 
 ### 2.1 Technology Stack
 
-| Layer | Component | หมายเหตุ |
-|-------|-----------|----------|
-| HTTP framework | NestJS 10 บน `@nestjs/platform-express` | DI container + module system |
-| ORM | Prisma 5 | schema-first, migrations versioned |
-| Database | Supabase Postgres | เข้าถึงผ่าน connection pooler (§9.1) |
-| Validation | Zod ผ่าน custom `ZodValidationPipe` | schema อยู่ใน `src/validation/schemas.ts` |
-| Auth (citizen) | `jsonwebtoken` (HS256, อายุ 7 วัน) | ออก/ตรวจ token เอง |
-| Auth (hospital) | API key (SHA-256 hash) ผ่าน header `x-api-key` | |
+| Layer | Component | Notes |
+|-------|-----------|-------|
+| HTTP framework | NestJS 10 on `@nestjs/platform-express` | DI container + module system |
+| ORM | Prisma 5 | schema-first, versioned migrations |
+| Database | Supabase Postgres | accessed via connection pooler (§9.1) |
+| Validation | Zod via a custom `ZodValidationPipe` | schemas in `src/validation/schemas.ts` |
+| Auth (citizen) | `jsonwebtoken` (HS256, 7-day expiry) | tokens issued/verified in-house |
+| Auth (hospital) | API key (SHA-256 hash) via `x-api-key` header | |
 | Messaging | `@line/bot-sdk` | webhook + Messaging API |
-| Test | Vitest + Supertest + `unplugin-swc` | e2e ยิง HTTP จริง |
+| Test | Vitest + Supertest + `unplugin-swc` | e2e tests exercise real HTTP |
 | Module system | CommonJS (`module: Node16`) | required for decorator metadata |
 
 ### 2.2 Module Layout
 
-ระบบจัดโครงเป็น NestJS module หนึ่งโดเมนต่อหนึ่งโฟลเดอร์ business logic อยู่ใน `*.service.ts` (`@Injectable`), HTTP binding อยู่ใน `*.controller.ts`
+The system is organized as one NestJS module per domain. Business logic lives in `*.service.ts` (`@Injectable`); HTTP binding lives in `*.controller.ts`.
 
 ```
 src/
 ├─ main.ts                    # bootstrap (NestFactory + configureApp)
-├─ configure-app.ts           # การตั้งค่า app ที่ main.ts และ test ใช้ร่วมกัน
+├─ configure-app.ts           # shared app configuration used by main.ts and tests
 ├─ app.module.ts              # root module
 ├─ common/
 │  ├─ errors/                 # ApiError, AllExceptionsFilter
@@ -73,32 +73,32 @@ src/
 └─ validation/schemas.ts      # Zod schemas
 ```
 
-Dependency: `PrismaModule` เป็น `@Global`; `AuthModule` export `AuthService` ให้ module ที่ใช้ `JwtAuthGuard` (appointments, api-keys)
+Dependencies: `PrismaModule` is `@Global`; `AuthModule` exports `AuthService` to modules that use `JwtAuthGuard` (appointments, api-keys).
 
 ### 2.3 Request Pipeline
 
 ```
 Request
-  → Guard (JwtAuthGuard | HospitalKeyGuard | LineSignatureGuard)   [ถ้ามี]
+  → Guard (JwtAuthGuard | HospitalKeyGuard | LineSignatureGuard)   [if present]
   → ZodValidationPipe (parse body/query)
   → Controller
   → Service (business logic, Prisma)
   → Mapper (row → DTO)
   → Response
-Exception ทุกชนิด → AllExceptionsFilter → error envelope (§4.4)
+Any exception → AllExceptionsFilter → error envelope (§4.4)
 ```
 
 ### 2.4 Application Bootstrap
 
-`configureApp(app)` เป็นจุดกำหนดค่ากลางที่ทั้ง `main.ts` และ test bootstrap เรียกใช้ เพื่อรับประกันว่า runtime กับ test environment เหมือนกันทุกประการ:
+`configureApp(app)` is the single point of application configuration, invoked by both `main.ts` and the test bootstrap to guarantee that the runtime and test environments are identical.
 
-| การตั้งค่า | ค่า | เหตุผล |
-|-----------|-----|--------|
-| `rawBody` | `true` | LINE webhook ต้องใช้ raw body ตรวจ HMAC signature |
-| CORS | `origin: true, credentials: true` | คงพฤติกรรมเดิมจาก Express |
-| Global prefix | `api` ยกเว้น `line/webhook` | LINE webhook อยู่นอก `/api` |
-| Global filter | `AllExceptionsFilter` | error envelope เดียวทั้งระบบ |
-| Shutdown hooks | เปิด | ปิด Prisma connection อย่าง graceful |
+| Setting | Value | Rationale |
+|---------|-------|-----------|
+| `rawBody` | `true` | the LINE webhook needs the raw body to verify the HMAC signature |
+| CORS | `origin: true, credentials: true` | preserves prior Express behavior |
+| Global prefix | `api`, excluding `line/webhook` | the LINE webhook lives outside `/api` |
+| Global filter | `AllExceptionsFilter` | one error envelope across the system |
+| Shutdown hooks | enabled | closes Prisma connections gracefully |
 
 ---
 
@@ -106,13 +106,13 @@ Exception ทุกชนิด → AllExceptionsFilter → error envelope (§4.
 
 ### 3.1 Conventions
 
-- **Base path:** `/api` (ยกเว้น `POST /line/webhook`)
+- **Base path:** `/api` (except `POST /line/webhook`)
 - **Content type:** `application/json`
 - **Authentication schemes:**
   - `JWT` — header `Authorization: Bearer <token>`
-  - `x-api-key` — header `x-api-key: <key>` (หรือ `Authorization: ApiKey <key>`)
+  - `x-api-key` — header `x-api-key: <key>` (or `Authorization: ApiKey <key>`)
   - `LINE signature` — header `x-line-signature` (HMAC-SHA256)
-- **Status codes:** ยึดตามตาราง §3.2 — status ที่ไม่ตรงกับ NestJS default ถูกกำหนดด้วย `@HttpCode`
+- **Status codes:** as specified in §3.2 — codes that differ from the NestJS default are set explicitly with `@HttpCode`.
 
 ### 3.2 Endpoint Inventory
 
@@ -148,8 +148,8 @@ Exception ทุกชนิด → AllExceptionsFilter → error envelope (§4.
 | GET | `/api/appointments/:id` | JWT | 200 `{ appointment }` | `404 NOT_FOUND` |
 | GET | `/api/scanned/:id` | — | 200 `{ appointment }` | `404 NOT_FOUND` |
 
-> `GET /api/appointments/:id` คืน `404` ทั้งกรณีไม่พบและกรณีไม่ใช่เจ้าของ (ไม่รั่ว existence)
-> route `me` ถูกประกาศก่อน `:id` เพื่อไม่ให้ path ชนกัน
+> `GET /api/appointments/:id` returns `404` both when the record is missing and when the caller is not its owner (does not leak existence).
+> The `me` route is declared before `:id` so the paths do not collide.
 
 **API Key Request** (citizen-facing form)
 
@@ -172,90 +172,90 @@ Exception ทุกชนิด → AllExceptionsFilter → error envelope (§4.
 
 ### 3.3 Data Transfer Objects
 
-Request/response type ทั้งหมดนิยามใน `shared/api.ts` และ `shared/types.ts` ซึ่ง frontend และ backend import ร่วมกัน การเปลี่ยน DTO จึงเปลี่ยน contract ของทั้งสองฝั่งพร้อมกัน `src/mappers/mappers.ts` เป็นชั้นเดียวที่แปลง Prisma row เป็น DTO
+All request/response types are defined in `shared/api.ts` and `shared/types.ts`, which both the frontend and backend import. Changing a DTO therefore changes the contract on both sides simultaneously. `src/mappers/mappers.ts` is the only layer that converts Prisma rows into DTOs.
 
 ### 3.4 Error Model
 
-ทุก error response มีรูปแบบเดียว (`ApiErrorBody`):
+Every error response uses a single envelope (`ApiErrorBody`):
 
 ```json
-{ "error": "<ข้อความภาษาไทย>", "code": "<OPTIONAL_CODE>", "details": { "<field>": "<message>" } }
+{ "error": "<message>", "code": "<OPTIONAL_CODE>", "details": { "<field>": "<message>" } }
 ```
 
-| แหล่ง | HTTP status | รูปแบบ |
-|-------|-------------|--------|
-| `ApiError` (business error) | ตามที่กำหนด | `{ error, code?, details? }` |
+| Source | HTTP status | Shape |
+|--------|-------------|-------|
+| `ApiError` (business error) | as specified | `{ error, code?, details? }` |
 | `ZodError` (validation) | 400 | `{ error: "ข้อมูลไม่ถูกต้อง", code: "VALIDATION", details }` |
-| อื่น ๆ (unhandled) | 500 | `{ error: "เกิดข้อผิดพลาดภายในระบบ" }` |
+| Other (unhandled) | 500 | `{ error: "เกิดข้อผิดพลาดภายในระบบ" }` |
 
-ข้อความ `error` เป็นภาษาไทยและถูกแสดงต่อผู้ใช้โดยตรงที่ frontend
+The `error` field is a Thai-language string and is shown directly to the user by the frontend; these strings are treated as part of the contract.
 
 ---
 
 ## 4. Data Model
 
-Schema กำหนดใน `prisma/schema.prisma` (Postgres) ประกอบด้วย 5 ตารางและ 6 enum
+The schema is defined in `prisma/schema.prisma` (Postgres) and comprises five tables and six enums.
 
-| Model | Table | บทบาท | Key constraints |
-|-------|-------|-------|-----------------|
-| `User` | `users` | บัญชีประชาชน | `nationalId` unique, `email` unique |
-| `Hospital` | `hospitals` | โรงพยาบาล | `services[]`, `rightsAccepted[]` เป็น enum array; จัดกลุ่มด้วย `zone` |
-| `Schedule` | `schedules` | ช่วงเวลาแบบ weekly template (ใช้ร่วมทุก รพ.) | unique `(dayOfWeek, startTime)` |
-| `Reserve` | `reserves` | การจอง | `bookingCode` unique; index `(hospitalId, scheduleId, date)` |
-| `HospitalApiKey` | `hospital_api_keys` | API key ของโรงพยาบาล | `hash` unique; รองรับ revoke |
+| Model | Table | Role | Key constraints |
+|-------|-------|------|-----------------|
+| `User` | `users` | citizen account | `nationalId` unique, `email` unique |
+| `Hospital` | `hospitals` | hospital | `services[]`, `rightsAccepted[]` are enum arrays; grouped by `zone` |
+| `Schedule` | `schedules` | weekly template time slots (shared by all hospitals) | unique `(dayOfWeek, startTime)` |
+| `Reserve` | `reserves` | reservation | `bookingCode` unique; index `(hospitalId, scheduleId, date)` |
+| `HospitalApiKey` | `hospital_api_keys` | hospital API key | `hash` unique; supports revocation |
 
-**Enums:** `InsuranceRight`, `Sex`, `ServiceType`, `Zone`, `AppointmentStatus` (`pending`/`confirmed`/`checked_in`/`in_progress`/`completed`/`cancelled`/`no_show`)
+**Enums:** `InsuranceRight`, `Sex`, `ServiceType`, `Zone`, `AppointmentStatus` (`pending`/`confirmed`/`checked_in`/`in_progress`/`completed`/`cancelled`/`no_show`).
 
-**ข้อสังเกตเชิงออกแบบ:**
-- `Schedule` ไม่มี foreign key ไป `Hospital` — เป็น template กลางที่ทุกโรงพยาบาลใช้ตารางเวลาเดียวกัน (ดู §12 ข้อ 3)
-- `Reserve.queueNumber` คำนวณจากจำนวนที่จองแล้ว + 1 ณ เวลาสร้าง
+**Design notes:**
+- `Schedule` has no foreign key to `Hospital` — it is a shared template that every hospital uses for its opening times (see §12, item 3).
+- `Reserve.queueNumber` is computed as the current booked count + 1 at creation time.
 
 ---
 
 ## 5. Security & Privacy
 
 ### 5.1 Citizen Authentication
-- Password hash ด้วย bcrypt (cost 10)
-- JWT payload `{ sub: userId }` ลงนามด้วย `JWT_SECRET` (HS256) อายุ 7 วัน
-- `registerSchema` ตรวจ checksum เลขบัตรประชาชนจริง (`isThaiNationalId`)
+- Passwords are hashed with bcrypt (cost 10).
+- JWT payload `{ sub: userId }` is signed with `JWT_SECRET` (HS256), 7-day expiry.
+- `registerSchema` validates the real Thai national-ID checksum (`isThaiNationalId`).
 
 ### 5.2 Hospital API Keys
-- Key รูปแบบ `ck_live_<random>` เก็บใน DB เป็น **SHA-256 hash** เท่านั้น (plaintext ไม่เคยถูกเก็บ)
-- ตรวจสอบผ่าน `HospitalKeyGuard`; รองรับ `revokedAt` และบันทึก `lastUsedAt` แบบ fire-and-forget
-- แต่ละ key ผูกกับ `hospitalId` เดียว — สร้าง/แก้การจองข้ามโรงพยาบาลถูกปฏิเสธด้วย `403 HOSPITAL_MISMATCH`
+- Keys have the form `ck_live_<random>` and are stored in the database only as a **SHA-256 hash** (plaintext is never persisted).
+- Verified by `HospitalKeyGuard`; supports `revokedAt` and records `lastUsedAt` fire-and-forget.
+- Each key is bound to a single `hospitalId` — creating or modifying a reservation for another hospital is rejected with `403 HOSPITAL_MISMATCH`.
 
 ### 5.3 LINE Webhook
-- ตรวจ `x-line-signature` (HMAC-SHA256 บน raw body) ใน `LineSignatureGuard` ก่อนประมวลผลทุกครั้ง
+- `x-line-signature` (HMAC-SHA256 over the raw body) is verified in `LineSignatureGuard` before any processing.
 
 ### 5.4 Row Level Security (Supabase)
-Phase 1 เข้าถึง Postgres ผ่าน Prisma ด้วย `postgres` role ซึ่ง bypass RLS ทั้งหมด **ตารางทั้งหมดจึงยังไม่มี RLS policy** ข้อจำกัดที่ต้องบังคับใช้: ห้ามเปิด PostgREST/anon access ให้ตารางเหล่านี้จนกว่าจะเขียน policy (เป็น prerequisite ของ Phase 2 §11.6)
+Phase 1 accesses Postgres through Prisma using the `postgres` role, which bypasses RLS entirely, so **no table has an RLS policy yet**. Constraint to enforce: do not enable PostgREST/anon access to these tables until policies are written (a prerequisite for Phase 2, §11.9).
 
 ---
 
 ## 6. Configuration
 
-Environment variables โหลดผ่าน `@nestjs/config` และ validate ด้วย Zod (`config/env.ts`) — process จะ terminate ทันทีตอน boot ถ้าตัวแปร required ขาด
+Environment variables are loaded via `@nestjs/config` and validated with Zod (`config/env.ts`) — the process terminates at boot if a required variable is missing.
 
-| Variable | Required | Default | หมายเหตุ |
-|----------|:--------:|---------|----------|
+| Variable | Required | Default | Notes |
+|----------|:--------:|---------|-------|
 | `DATABASE_URL` | ✅ | — | Supabase transaction pooler (6543, `?pgbouncer=true`) |
-| `DIRECT_URL` | ✅ (migrate) | — | Supabase session pooler (5432); อ่านโดย Prisma CLI |
+| `DIRECT_URL` | ✅ (migrate) | — | Supabase session pooler (5432); read by the Prisma CLI |
 | `JWT_SECRET` | ✅ | — | HS256 signing key |
 | `PORT` | — | `4000` | |
-| `LINE_CHANNEL_SECRET` | — | `""` | ปิด webhook ถ้าเว้นว่าง |
+| `LINE_CHANNEL_SECRET` | — | `""` | webhook disabled if blank |
 | `LINE_CHANNEL_TOKEN` | — | `""` | Messaging API |
 | `LIFF_ID` | — | `""` | |
-| `GOOGLE_APPS_SCRIPT_URL` | — | `""` | ปิด sheet logging ถ้าเว้นว่าง |
+| `GOOGLE_APPS_SCRIPT_URL` | — | `""` | sheet logging disabled if blank |
 
 ---
 
 ## 7. Testing
 
-- **กลยุทธ์:** e2e test (Supertest) ยิง HTTP จริงผ่าน Nest app ที่ประกอบด้วย `configureApp` เดียวกับ production — assertion ทำหน้าที่เป็น contract test
-- **Database:** ชี้ local Postgres (`carekan_test`) เสมอ; `src/test/setup.ts` throw ถ้า `DATABASE_URL` ไม่ใช่ localhost เพราะ suite เรียก `resetDb()` ที่ล้างทุกตาราง
-- **Isolation:** `fileParallelism: false` (ทุกไฟล์ใช้ test DB ร่วมกัน)
-- **Coverage:** auth, hospitals, appointments, hospital-api, api-key schema, mappers, seed, health, LINE signature — รวม 38 test
-- **Decorator metadata:** Vitest ใช้ `unplugin-swc` เป็น transformer แทน esbuild (esbuild ไม่ emit `emitDecoratorMetadata` ที่ Nest DI ต้องใช้)
+- **Strategy:** e2e tests (Supertest) exercise real HTTP through a Nest app assembled with the same `configureApp` used in production — assertions act as contract tests.
+- **Database:** always points at a local Postgres (`carekan_test`); `src/test/setup.ts` throws if `DATABASE_URL` is not localhost, because the suite calls `resetDb()`, which truncates every table.
+- **Isolation:** `fileParallelism: false` (all files share the test database).
+- **Coverage:** auth, hospitals, appointments, hospital-api, api-key schema, mappers, seed, health, LINE signature — 38 tests total.
+- **Decorator metadata:** Vitest uses `unplugin-swc` as its transformer instead of esbuild (esbuild does not emit the `emitDecoratorMetadata` that Nest DI requires).
 
 ---
 
@@ -266,10 +266,10 @@ npm run dev        # tsc-watch → node dist/backend/src/main.js
 npm run build      # tsc -p tsconfig.json
 npm start          # node dist/backend/src/main.js
 npm run typecheck  # tsc --noEmit
-npm test           # vitest run (ต้องมี local Postgres)
+npm test           # vitest run (requires local Postgres)
 ```
 
-Compiler config หลัก: `module: Node16`, `experimentalDecorators`, `emitDecoratorMetadata`, `rootDir: ".."` (เพื่อ import `shared/` ที่อยู่นอก `backend/`) → build output อยู่ที่ `dist/backend/src/`
+Key compiler config: `module: Node16`, `experimentalDecorators`, `emitDecoratorMetadata`, `rootDir: ".."` (to import `shared/`, which lives outside `backend/`) → build output at `dist/backend/src/`.
 
 ---
 
@@ -277,87 +277,87 @@ Compiler config หลัก: `module: Node16`, `experimentalDecorators`, `emitD
 
 ### 9.1 Supabase (Database)
 
-Prisma ต้องใช้ connection สองแบบ:
+Prisma requires two connections:
 
-| ตัวแปร | Port | ใช้ตอน | เหตุผล |
-|--------|------|--------|--------|
-| `DATABASE_URL` | 6543 (transaction pooler) | runtime query | ประหยัด connection ผ่าน PgBouncer |
-| `DIRECT_URL` | 5432 (session pooler) | `prisma migrate` | migration ต้องใช้ session-level features ที่ transaction pooler ไม่รองรับ |
+| Variable | Port | Used for | Reason |
+|----------|------|----------|--------|
+| `DATABASE_URL` | 6543 (transaction pooler) | runtime queries | conserves connections via PgBouncer |
+| `DIRECT_URL` | 5432 (session pooler) | `prisma migrate` | migrations need session-level features the transaction pooler does not support |
 
-`schema.prisma` ประกาศทั้งสองผ่าน `url` และ `directUrl`
+`schema.prisma` declares both via `url` and `directUrl`.
 
 ### 9.2 Application (Railway / Render)
 
-| รายการ | ค่า |
-|--------|-----|
+| Item | Value |
+|------|-------|
 | Build command | `npm run build` |
 | Start command | `node dist/backend/src/main.js` |
 | Release command | `prisma migrate deploy` |
 | Health check | `GET /api/health` |
-| Deployment model | long-lived Node process (ไม่ใช่ serverless) |
+| Deployment model | long-lived Node process (not serverless) |
 
-Post-deploy: อัปเดต LINE webhook URL → domain ใหม่, ชี้ frontend (`VITE_API_BASE_URL`) → backend ใหม่ โดยไม่แก้โค้ด frontend
+Post-deploy: update the LINE webhook URL to the new domain, and point the frontend (`VITE_API_BASE_URL`) at the new backend without changing frontend code.
 
 ### 9.3 Deployment Status
-Application deployment ยังไม่ดำเนินการ Database (Supabase) migrate + seed แล้ว
+Application deployment is not yet done. The database (Supabase) is migrated and seeded.
 
 ---
 
 ## 10. Phase 1 — Migration Record
 
 ### 10.1 Outcome
-ย้าย Express → NestJS และ Docker/Vercel Postgres → Supabase โดย API contract (§3) ไม่เปลี่ยน ยืนยันด้วย:
-- Test suite 38/38 ผ่าน
-- Contract regression 20/20 — เทียบ status + body ระหว่าง Express เดิมและ NestJS ใหม่ตรงกันทุกเคส
-- End-to-end flow ผ่าน frontend เดิม (ไม่แก้โค้ด): register → login → search → book → QR
+Migrated Express → NestJS and Docker/Vercel Postgres → Supabase with no change to the API contract (§3), verified by:
+- Test suite 38/38 passing.
+- Contract regression 20/20 — status and body compared between the old Express and new NestJS servers matched on every case.
+- End-to-end flow through the unchanged frontend: register → login → search → book → QR.
 
 ### 10.2 Design Decisions
 
-| # | การตัดสินใจ | เหตุผล |
-|---|-------------|--------|
-| D1 | คง Prisma (ไม่ใช้ supabase-js) | Supabase เป็น Postgres มาตรฐาน; schema + migrations เดิมใช้ต่อได้ทันที |
-| D2 | คง JWT ที่ออกเอง (ไม่ใช้ Supabase Auth) | Supabase Auth ผูกกับ email/phone ไม่รองรับ login ด้วยเลขบัตร 13 หลัก และจะบังคับให้แก้ frontend |
-| D3 | `module: Node16` (CJS) ไม่ใช่ suffix-stripping | คง `.js` import suffix เดิมได้ทั้งหมด ลดพื้นที่การเปลี่ยนแปลง |
-| D4 | คง Vitest + `unplugin-swc` (ไม่ port ไป Jest) | assertion เดิมไม่ต้องแก้ → contract fidelity สูงกว่า |
-| D5 | `jsonwebtoken` ตรง ไม่ใช้ `@nestjs/jwt` | logic ~15 บรรทัด ไม่คุ้มการเพิ่ม dependency |
-| D6 | Zod pipe ไม่ใช่ `class-validator` | error `details` shape ต้องคงเดิมเพื่อ frontend |
-| D7 | Railway/Render ไม่ใช่ Vercel serverless | long-lived process เหมาะกับ Prisma connection pool และ LINE raw-body |
+| # | Decision | Rationale |
+|---|----------|-----------|
+| D1 | Keep Prisma (not supabase-js) | Supabase is standard Postgres; the existing schema and migrations apply unchanged |
+| D2 | Keep in-house JWT (not Supabase Auth) | Supabase Auth is tied to email/phone and cannot authenticate by 13-digit national ID; adopting it would force frontend changes |
+| D3 | `module: Node16` (CJS), not suffix-stripping | keeps all existing `.js` import suffixes, minimizing the change surface |
+| D4 | Keep Vitest + `unplugin-swc` (do not port to Jest) | existing assertions need no changes → higher contract fidelity |
+| D5 | Use `jsonwebtoken` directly, not `@nestjs/jwt` | ~15 lines of logic; not worth the extra dependency |
+| D6 | Zod pipe, not `class-validator` | the error `details` shape must stay identical for the frontend |
+| D7 | Railway/Render, not Vercel serverless | a long-lived process suits the Prisma connection pool and LINE raw-body handling |
 
 ### 10.3 Incidental Fixes
-- `rootDir` เดิมชี้เกิน repo root หนึ่งชั้น (`../..`) ทำให้ `npm start` เดิมพัง — แก้เป็น `..`
-- `health.test.ts` มี assertion ที่ล้าสมัย (ไม่ตรงกับ response body จริง) — แก้ให้ตรง
+- The prior `rootDir` pointed one level above the repo root (`../..`), which broke `npm start` — corrected to `..`.
+- `health.test.ts` had a stale assertion that did not match the actual response body — corrected.
 
 ---
 
 ## 11. Phase 2 — Feature Specification
 
-เพิ่มฟีเจอร์ตลอด patient journey แบบ **additive** — endpoint และ contract จาก §3 ไม่เปลี่ยน ฟีเจอร์ใหม่เป็น module/ตาราง/endpoint ที่เพิ่มเข้ามา
+Adds patient-journey features **additively** — the endpoints and contract in §3 do not change; new features are added as new modules, tables, and endpoints.
 
 ### 11.1 Feature Inventory
 
 | # | Feature | Phase | Module | Foundation |
 |---|---------|-------|--------|:----------:|
-| 1 | ผู้ดูแลจองคิวแทน | Before | `caregivers` | A |
-| 2 | แนะนำช่วงเวลาที่ผู้ป่วยน้อย | Before | `hospitals` | — |
-| 3 | แจ้งเตือนวัน-เวลานัด | Before | `notifications` | N |
-| 4 | ตรวจสอบสิทธิการรักษา | Before | `entitlement` | — |
-| 5 | รายการเอกสารก่อนเข้ารับบริการ | Before | `appointments` | — |
-| 6 | แจ้งเตือนเมื่อเช็กอิน | During | `queue` | N |
-| 7 | สถานะคิวแบบ real-time | During | `queue` | R |
-| 8 | แจ้งเมื่อคิวล่าช้า | During | `queue` + `notifications` | R, N |
-| 9 | ประกาศเหตุฉุกเฉิน/ความล่าช้า | During | `announcements` | — |
-| 10 | แจ้งผู้ดูแลเมื่อผู้ป่วยมาถึง | During | `caregivers` + `notifications` | A, N |
-| 11 | แปลผลการรักษาเป็นภาษาเข้าใจง่าย (LLM) | After | `records` | S |
-| 12 | เตือนรับประทานยา | After | `records` + `notifications` | N |
-| 13 | เตือนนัดครั้งถัดไป | After | `appointments` + `notifications` | N |
-| 14 | แชร์ผลการรักษาให้ครอบครัว (consent) | After | `records` + `caregivers` | A, S |
-| 15 | คลังเอกสาร (ใบนัด/ใบเสร็จ/ผล) | After | `documents` | S |
+| 1 | Caregiver books on a patient's behalf | Before | `caregivers` | A |
+| 2 | Suggest low-traffic time slots | Before | `hospitals` | — |
+| 3 | Appointment reminders | Before | `notifications` | N |
+| 4 | Entitlement (insurance rights) check | Before | `entitlement` | — |
+| 5 | Required-documents checklist | Before | `appointments` | — |
+| 6 | Check-in notification | During | `queue` | N |
+| 7 | Real-time queue status | During | `queue` | R |
+| 8 | Queue-delay notification | During | `queue` + `notifications` | R, N |
+| 9 | Emergency / delay announcements | During | `announcements` | — |
+| 10 | Notify caregiver on patient arrival | During | `caregivers` + `notifications` | A, N |
+| 11 | Plain-language result explanation (LLM) | After | `records` | S |
+| 12 | Medication reminders | After | `records` + `notifications` | N |
+| 13 | Follow-up appointment reminders | After | `appointments` + `notifications` | N |
+| 14 | Share results with family (consent) | After | `records` + `caregivers` | A, S |
+| 15 | Document vault (slips / receipts / results) | After | `documents` | S |
 
-**Foundations:** A = Caregiver/Managed patient · N = Notification service · R = Real-time queue · S = Storage & records
+**Foundations:** A = Caregiver / managed patient · N = Notification service · R = Real-time queue · S = Storage & records.
 
 ### 11.2 Foundation A — Managed Patient
 
-รองรับผู้ป่วย (เช่น ผู้สูงอายุ) ที่ไม่มีบัญชีของตนเอง ให้ผู้ดูแลจองแทน
+Supports patients (e.g. the elderly) who have no account of their own, letting a caregiver book for them.
 
 ```prisma
 model ManagedPatient {
@@ -377,8 +377,8 @@ model ManagedPatient {
 }
 ```
 
-- `Reserve` เพิ่มคอลัมน์ nullable `managedPatientId` (null = จองให้ตนเอง → พฤติกรรมเดิมไม่เปลี่ยน)
-- Endpoints: `GET|POST|DELETE /api/dependents`; `POST /api/appointments` รับ `dependentId?`
+- `Reserve` gains a nullable `managedPatientId` column (null = self-booking → existing behavior unchanged).
+- Endpoints: `GET|POST|DELETE /api/dependents`; `POST /api/appointments` accepts an optional `dependentId`.
 
 ### 11.3 Foundation N — Notification Service
 
@@ -401,9 +401,9 @@ model NotificationLog {
 }
 ```
 
-- **Channel:** LINE Messaging API (`pushMessage`) — reuse client ใน `line/`; ผูก `lineUserId` ตอน login ผ่าน LIFF
-- **Scheduler:** `@nestjs/schedule` (`@Cron`) สแกน `Reserve` ที่ใกล้ถึงกำหนด
-- **Idempotency:** ตรวจ `NotificationLog` ก่อนส่ง
+- **Channel:** LINE Messaging API (`pushMessage`) — reuse the client in `line/`; bind `lineUserId` at login via LIFF.
+- **Scheduler:** `@nestjs/schedule` (`@Cron`) scans `Reserve` rows approaching their date.
+- **Idempotency:** check `NotificationLog` before sending.
 
 ### 11.4 Foundation R — Real-time Queue
 
@@ -418,9 +418,9 @@ model QueueState {
 }
 ```
 
-- โรงพยาบาลอัปเดตเลขคิวปัจจุบันผ่าน `PATCH /api/hospital/queue` (`x-api-key`)
-- **Client subscribe ผ่าน Supabase Realtime** บนตาราง `queue_states` (ต้องเปิด Realtime + RLS read-only)
-- MVP fallback: `GET /api/hospitals/:id/queue?date=` แบบ polling
+- Hospitals update the current queue number via `PATCH /api/hospital/queue` (`x-api-key`).
+- **Clients subscribe through Supabase Realtime** on the `queue_states` table (requires enabling Realtime + a read-only RLS policy).
+- MVP fallback: `GET /api/hospitals/:id/queue?date=` by polling.
 
 ### 11.5 Foundation S — Records & Documents
 
@@ -429,7 +429,7 @@ model MedicalRecord {
   id           String   @id @default(cuid())
   reserveId    String   @unique @map("reserve_id")
   summaryRaw   String   @map("summary_raw")
-  summaryPlain String?  @map("summary_plain")   // ผลผลิต LLM; cache
+  summaryPlain String?  @map("summary_plain")   // LLM output; cached
   createdAt    DateTime @default(now()) @map("created_at")
   @@map("medical_records")
 }
@@ -445,8 +445,8 @@ model Document {
 }
 ```
 
-- ไฟล์เก็บใน Supabase Storage (private bucket); backend คืน signed URL อายุสั้น
-- LLM (feature 11): `POST /api/records/:id/explain` เรียก Claude (`claude-haiku-4-5` สำหรับต้นทุน/ความเร็ว) แปลงศัพท์แพทย์ → เก็บ `summaryPlain` (เรียกครั้งเดียวต่อ record)
+- Files are stored in Supabase Storage (private bucket); the backend returns short-lived signed URLs.
+- LLM (feature 11): `POST /api/records/:id/explain` calls Claude (`claude-haiku-4-5` for cost/latency) to translate medical terminology into plain language, then stores `summaryPlain` (called once per record).
 
 ### 11.6 New Endpoints (additive)
 
@@ -468,42 +468,42 @@ model Document {
 | GET | `/api/me/documents` | JWT | 15 |
 | GET | `/api/documents/:id/url` | JWT | 15 |
 
-ทุก endpoint ที่คืนข้อมูลผู้ป่วยต้องตรวจ ownership (เจ้าของ หรือ guardian ที่มี consent) ตาม pattern `getAppointmentForOwner` เดิม
+Every endpoint that returns patient data must enforce ownership (the owner, or a guardian with consent), following the existing `getAppointmentForOwner` pattern.
 
 ### 11.7 Schema Changes Summary
-- **ตารางใหม่:** `managed_patients`, `notification_prefs`, `notification_logs`, `queue_states`, `medical_records`, `documents`, `announcements`
-- **แก้ตารางเดิม (nullable, additive):** `reserves.managed_patient_id`
-- Migration รันผ่าน `DIRECT_URL` (§9.1)
+- **New tables:** `managed_patients`, `notification_prefs`, `notification_logs`, `queue_states`, `medical_records`, `documents`, `announcements`.
+- **Modified tables (nullable, additive):** `reserves.managed_patient_id`.
+- Migrations run via `DIRECT_URL` (§9.1).
 
 ### 11.8 Sequencing
 
-| Round | งาน | เหตุผล |
-|-------|-----|--------|
-| 0 | เคลียร์ §12 ข้อ 1 (booking race) และ ข้อ 5 (`/scanned/:id`) | prerequisite ของคิว real-time และความเป็นส่วนตัว |
-| 1 | Feature 6 (check-in), 9 (announcements), 2 (suggest-slots) | ฐานข้อมูลมีเกือบครบ ส่งมอบเร็ว |
-| 2 | Foundation N, R | ปลดล็อกฟีเจอร์แจ้งเตือนและคิวจำนวนมาก |
-| 3 | Foundation A, S; feature 11, 12, 14 | ต้องการ model และ integration ใหม่ |
+| Round | Work | Rationale |
+|-------|------|-----------|
+| 0 | Resolve §12 items 1 (booking race) and 5 → 2 (`/scanned/:id`) | prerequisites for real-time queue and privacy |
+| 1 | Features 6 (check-in), 9 (announcements), 2 (suggest-slots) | data foundations mostly exist; fast to ship |
+| 2 | Foundations N, R | unlock a large set of notification and queue features |
+| 3 | Foundations A, S; features 11, 12, 14 | require new models and integrations |
 
 ### 11.9 Risks
 
-| ความเสี่ยง | ผลกระทบ | การจัดการ |
-|-----------|---------|-----------|
-| เปิด Realtime/Storage โดยไม่มี RLS | anon key อ่านข้อมูลผู้ป่วยได้ทั้งตาราง | เขียน RLS policy เป็น prerequisite (§5.4) |
-| โควตา LINE push (บัญชีฟรี) | แจ้งเตือนส่งไม่ครบ | คุมจำนวน + fallback in-app notification |
-| ต้นทุน/latency LLM (feature 11) | ค่าใช้จ่ายและเวลาตอบสูง | cache `summaryPlain`, ใช้ `claude-haiku-4-5` |
-| PDPA — ข้อมูลผลการรักษาอ่อนไหว (feature 14) | ความเสี่ยงด้านกฎหมาย | บังคับ consent + audit log การเข้าถึง |
-| เช็คสิทธิจริง (feature 4) ต้องต่อ API สปสช. | dependency ภายนอก | MVP ให้ผู้ใช้กรอกเอง เทียบกับ `Hospital.rightsAccepted` |
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Enabling Realtime/Storage without RLS | anon key can read entire patient tables | write RLS policies as a prerequisite (§5.4) |
+| LINE push quota (free tier) | reminders not fully delivered | rate-limit + in-app notification fallback |
+| LLM cost/latency (feature 11) | high cost and response time | cache `summaryPlain`, use `claude-haiku-4-5` |
+| PDPA — result data is sensitive (feature 14) | legal/compliance risk | require explicit consent + access audit log |
+| Real entitlement check (feature 4) requires the NHSO API | external dependency | MVP: user self-declares, compared against `Hospital.rightsAccepted` |
 
 ---
 
 ## 12. Known Issues / Technical Debt
 
-รายการที่มีอยู่ก่อน Phase 2 ควรจัดการตามลำดับความสำคัญ:
+Pre-existing items to address before or during Phase 2, in priority order:
 
-1. **Booking race condition** — `createAppointment`/`createReserve` ใช้ `count()` เทียบ `maxCapacity` ภายใต้ isolation `READ COMMITTED` (default) จองพร้อมกันอาจเกิน capacity ได้ → แก้ด้วย unique constraint หรือ `Serializable` **(สำคัญสุด — correctness)**
-2. **`/api/scanned/:id` เป็น public** — ใครทราบ `id` (cuid) อ่านชื่อผู้ป่วยได้ → ใช้ signed token ใน QR **(privacy)**
-3. **`Schedule` ไม่ผูกกับ `Hospital`** — ตารางเวลาเป็น template กลาง หากต้องการเวลาเปิดต่างกันต่อ รพ. ต้อง migrate schema
-4. **`queueNumber` = `booked + 1`** — เลขคิวซ้ำได้เมื่อมีการยกเลิก
-5. **โค้ดจองซ้ำ** — logic การจอง (`generateBookingCode`, `RESERVE_INCLUDE`, capacity check) ซ้ำใน `appointments` และ `hospital-api` → ควรรวมเป็น service เดียว
-6. **ไม่มี rate limiting** บน `/auth/login` และ `/hospital/*` → `@nestjs/throttler`
-7. **ไม่มี structured logging / request id** → `nestjs-pino`
+1. **Booking race condition** — `createAppointment`/`createReserve` use `count()` against `maxCapacity` under the default `READ COMMITTED` isolation; concurrent bookings can exceed capacity. Fix with a unique constraint or `Serializable`. **(highest priority — correctness)**
+2. **`/api/scanned/:id` is public** — anyone who knows the `id` (a cuid) can read a patient's name. Use a signed token in the QR code. **(privacy)**
+3. **`Schedule` is not linked to `Hospital`** — time slots are a shared template; supporting per-hospital opening hours requires a schema migration.
+4. **`queueNumber` = `booked + 1`** — queue numbers can repeat after a cancellation.
+5. **Duplicated booking logic** — the booking logic (`generateBookingCode`, `RESERVE_INCLUDE`, capacity check) is duplicated across `appointments` and `hospital-api`; consolidate into a single service.
+6. **No rate limiting** on `/auth/login` or `/hospital/*` → `@nestjs/throttler`.
+7. **No structured logging / request id** → `nestjs-pino`.
