@@ -4,8 +4,8 @@
 
 | เฟส | เป้าหมาย | สถานะ |
 |-----|----------|-------|
-| **Phase 1** | ย้าย tech stack: Express → **NestJS**, Postgres (Docker/Railway) → **Supabase** โดย **endpoint และ response contract เหมือนเดิมทุกตัว** | 📋 เอกสารนี้ |
-| **Phase 2** | เพิ่ม endpoint และฟีเจอร์ใหม่บนสถาปัตยกรรม NestJS | ⏳ รอกำหนด |
+| **Phase 1** | ย้าย tech stack: Express → **NestJS**, Postgres (Docker/Railway) → **Supabase** โดย **endpoint และ response contract เหมือนเดิมทุกตัว** | ✅ เสร็จ (เหลือ deploy) |
+| **Phase 2** | เพิ่มฟีเจอร์ตลอด patient journey (ก่อน/ระหว่าง/หลังรักษา) บนสถาปัตยกรรม NestJS + Supabase | 📋 วางแผนแล้ว (ดู Phase 2) |
 
 ---
 
@@ -541,10 +541,190 @@ Supabase DB ใช้ร่วมกันได้ทั้งสองตั�
 
 ---
 
-# Phase 2 — New Features (ร่าง)
+# Phase 2 — New Features
 
-รอกำหนดรายละเอียด หัวข้อที่คาดว่าจะครอบคลุม:
+เพิ่มฟีเจอร์ตลอดเส้นทางผู้ป่วย **ก่อน / ระหว่าง / หลัง** การรักษา บนสถาปัตยกรรม NestJS + Supabase ที่ Phase 1 วางไว้
+(feature map แบบ ก่อน/ระหว่าง/หลัง ครบทั้ง front+back อยู่ที่ §2.1 — เอกสารนี้เจาะการออกแบบฝั่ง backend)
 
-- Endpoint ใหม่สำหรับฟีเจอร์ใหม่ (รอ requirement)
-- แก้ Known Issues §9 ตามลำดับความสำคัญ (เริ่มจากข้อ 1 และ 5 ซึ่งเป็นเรื่อง correctness และ privacy)
-- พิจารณาใช้ Supabase Realtime สำหรับสถานะคิว และ Supabase Storage สำหรับเอกสารแนบ — ทั้งคู่ต้องเขียน RLS policy ก่อน (§4.4)
+## 2.0 หลักการ
+
+1. **Additive เท่านั้น** — endpoint 16 ตัวและ contract จาก Phase 1 (§2) **ห้ามเปลี่ยน** ฟีเจอร์ใหม่ทั้งหมดเป็น endpoint/ตารางที่เพิ่มเข้ามา ไม่แก้ของเดิม
+2. **1 ฟีเจอร์ = 1 Nest module** — ต่อจากโครง §3.1 (`notifications/`, `caregivers/`, `queue/`, `records/`, `documents/`)
+3. **เคลียร์ Known Issues §9 ก่อน** — โดยเฉพาะข้อ 1 (booking race) และข้อ 5 (`/scanned/:id` public) เพราะ Phase 2 หลายฟีเจอร์ต่อยอดจากการจอง/QR
+4. **ใช้ Supabase ให้เต็มขึ้น** — Phase 1 ใช้แค่ Postgres; Phase 2 เริ่มใช้ **Realtime** (คิว) และ **Storage** (เอกสาร) → ต้องเขียน **RLS policy** ก่อน (§4.4) เพราะสองบริการนี้เข้าถึงผ่าน anon/service key ไม่ผ่าน Prisma
+
+## 2.1 Feature Map → Backend work
+
+| # | ฟีเจอร์ | สถานะฐาน | Module | ฐานร่วมที่ใช้ |
+|---|---------|:---:|--------|----------------|
+| 1 | ผู้ดูแลจองคิวแทน | ⬜ | `caregivers` | A |
+| 2 | AI แนะนำเวลาคนน้อย | 🟡 | `hospitals` (ต่อของเดิม) | — |
+| 3 | แจ้งเตือนวัน-เวลานัด | ⬜ | `notifications` | N |
+| 4 | ตรวจสอบสิทธิรักษา | 🟡 | `auth`/`entitlement` | — |
+| 5 | เตรียมเอกสารก่อนบริการ | 🟡 | `appointments` (content) | — |
+| 6 | แจ้งเตือนเช็กอิน | ⬜ | `queue`/`appointments` | N |
+| 7 | คิว Real-time | 🟡 | `queue` | R |
+| 8 | แจ้งคิวล่าช้า | ⬜ | `queue` + `notifications` | R, N |
+| 9 | แจ้งเหตุฉุกเฉินล่าช้า | ⬜ | `announcements` | (N) |
+| 10 | แจ้งผู้ดูแลเมื่อผู้ป่วยมาถึง | ⬜ | `caregivers` + `notifications` | A, N |
+| 11 | AI แปลผลรักษา | ⬜ | `records` | S |
+| 12 | เตือนกินยา | ⬜ | `records` + `notifications` | N |
+| 13 | เตือนนัดถัดไป | ⬜ | `appointments` + `notifications` | N |
+| 14 | แชร์ผลให้ครอบครัว (consent) | ⬜ | `records` + `caregivers` | A, S |
+| 15 | เก็บประวัติ/ใบนัด/ใบเสร็จ | 🟡 | `documents` | S |
+
+**ฐานร่วม:** A = Caregiver/Family · N = Notification service · R = Real-time queue · S = Storage/Records
+
+## 2.2 ฐานร่วม 4 ชิ้น (สร้างก่อน ปลดล็อกได้เยอะ)
+
+### A. Caregiver / Managed Patient  → ปลดล็อกข้อ 1, 10, 14
+
+ผู้สูงอายุที่ไม่มีบัญชีเองแต่มีเลขบัตร ให้ผู้ดูแล (มีบัญชี) จองแทนได้
+
+```prisma
+model ManagedPatient {
+  id           String   @id @default(cuid())
+  guardianId   String   @map("guardian_id")        // → User.id
+  nationalId   String   @map("national_id")        // ผู้ป่วยในความดูแล
+  firstName    String   @map("first_name")
+  lastName     String   @map("last_name")
+  birthDate    String   @map("birth_date")
+  relation     String                              // 'parent' | 'child' | 'spouse' | 'other'
+  consentAt    DateTime @map("consent_at")         // PDPA — ผู้ป่วยยินยอมให้ดูแล
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  guardian     User     @relation(fields: [guardianId], references: [id])
+  @@unique([guardianId, nationalId])
+  @@map("managed_patients")
+}
+```
+
+- `Reserve` เพิ่มคอลัมน์ nullable `managedPatientId` — ถ้ามี = จองแทน, ถ้า null = จองให้ตัวเอง (ของเดิมทำงานเหมือนเดิม → additive)
+- Endpoint: `POST/GET/DELETE /api/dependents`, และ `POST /api/appointments` รับ `dependentId?` เพิ่ม
+
+### N. Notification Service  → ปลดล็อกข้อ 3, 8, 10, 12, 13
+
+```prisma
+model NotificationPref {
+  userId       String  @id @map("user_id")
+  lineUserId   String? @map("line_user_id")   // ผูกจาก LIFF (liff.getProfile)
+  remindBooking   Boolean @default(true)  @map("remind_booking")
+  remindMedication Boolean @default(true) @map("remind_medication")
+  @@map("notification_prefs")
+}
+
+model NotificationLog {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  kind      String                          // 'booking_reminder' | 'queue_delay' | ...
+  channel   String                          // 'line' | 'inapp'
+  sentAt    DateTime @default(now()) @map("sent_at")
+  @@map("notification_logs")
+}
+```
+
+- **Push channel:** LINE Messaging API (`client.pushMessage`) — มี client อยู่แล้วใน `line/` แค่ต้องผูก `lineUserId` ตอน login ผ่าน LIFF
+- **Scheduler:** `@nestjs/schedule` (`@Cron`) — job รายวันสแกน `Reserve` ที่ใกล้ถึง แล้ว push
+- **Idempotency:** เช็ค `NotificationLog` กันส่งซ้ำ
+
+### R. Real-time Queue  → ปลดล็อกข้อ 7, 8
+
+```prisma
+model QueueState {
+  hospitalId  String   @map("hospital_id")
+  date        String
+  nowServing  String   @map("now_serving")   // 'A012'
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  @@id([hospitalId, date])
+  @@map("queue_states")
+}
+```
+
+- โรงพยาบาลอัปเดตเลขคิวปัจจุบันผ่าน hospital-API (`x-api-key`): `PATCH /api/hospital/queue`
+- **Frontend subscribe ตรงกับ Supabase Realtime** บนตาราง `queue_states` (ไม่ผ่าน backend) → ต้องเปิด Realtime + เขียน **RLS: select ได้เฉพาะ public read**
+- ทางเลือก MVP ถ้าไม่อยากเปิด Realtime: FE polling `GET /api/hospitals/:id/queue?date=` ทุก 15–30 วิ
+
+### S. Documents & Records (Storage)  → ปลดล็อกข้อ 11, 14, 15
+
+```prisma
+model MedicalRecord {
+  id          String   @id @default(cuid())
+  reserveId   String   @unique @map("reserve_id")
+  summaryRaw  String   @map("summary_raw")    // ที่ รพ. ส่งมา
+  summaryPlain String? @map("summary_plain")  // AI แปลง (null จนกว่าจะประมวลผล)
+  createdAt   DateTime @default(now()) @map("created_at")
+  @@map("medical_records")
+}
+
+model Document {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  reserveId   String?  @map("reserve_id")
+  type        String                          // 'appointment_slip'|'receipt'|'result'|'other'
+  storagePath String   @map("storage_path")   // path ใน Supabase Storage bucket
+  createdAt   DateTime @default(now()) @map("created_at")
+  @@map("documents")
+}
+```
+
+- ไฟล์เก็บใน **Supabase Storage** (private bucket) — backend คืน **signed URL** อายุสั้น ไม่เปิด public
+- **AI แปลผล (ข้อ 11):** `POST /api/records/:id/explain` → เรียก Claude (`claude-opus-4-8` หรือ `claude-haiku-4-5` สำหรับงานถูก/เร็ว) แปลงศัพท์แพทย์เป็นภาษาชาวบ้าน → เก็บ `summaryPlain`
+- **แชร์ครอบครัว (ข้อ 14):** ใช้ `ManagedPatient`/consent เป็นเงื่อนไขเข้าถึง
+
+## 2.3 New Endpoints (additive — เพิ่มจาก §2)
+
+| Method | Path | Auth | ฟีเจอร์ |
+|--------|------|------|---------|
+| GET | `/api/dependents` | JWT | 1 |
+| POST | `/api/dependents` | JWT | 1 |
+| DELETE | `/api/dependents/:id` | JWT | 1 |
+| GET | `/api/hospitals/:id/suggest-slots?date=` | public | 2 |
+| GET/PUT | `/api/me/notification-prefs` | JWT | 3, 12 |
+| GET | `/api/me/entitlement` | JWT | 4 |
+| GET | `/api/appointments/:id/documents-required` | JWT | 5 |
+| POST | `/api/appointments/:id/check-in` | JWT *(หรือ hospital-key)* | 6 |
+| GET | `/api/hospitals/:id/queue?date=` | public | 7 |
+| PATCH | `/api/hospital/queue` | `x-api-key` | 7, 8 |
+| GET | `/api/hospitals/:id/announcements` | public | 9 |
+| POST | `/api/hospital/announcements` | `x-api-key` | 9 |
+| GET | `/api/records/:id` | JWT | 11 |
+| POST | `/api/records/:id/explain` | JWT *(หรือ trigger อัตโนมัติ)* | 11 |
+| GET | `/api/me/documents` | JWT | 15 |
+| GET | `/api/documents/:id/url` | JWT | 15 |
+| POST | `/api/records/:id/share` | JWT | 14 |
+
+> ⚠️ ทุก endpoint ที่คืนข้อมูลผู้ป่วยต้องเช็ค ownership (เจ้าของ หรือ guardian ที่ได้รับ consent) — เหมือน pattern `getAppointmentForOwner` เดิมที่ 404 เมื่อไม่ใช่เจ้าของ
+
+## 2.4 Prisma / Schema changes สรุป
+
+- **ตารางใหม่:** `managed_patients`, `notification_prefs`, `notification_logs`, `queue_states`, `medical_records`, `documents`, `announcements`
+- **แก้ตารางเดิม (nullable ทั้งหมด → additive):** `reserves.managed_patient_id`, `users` ↔ relations ใหม่
+- ทุก migration รันผ่าน `DIRECT_URL` (§4.2) เหมือนเดิม
+
+## 2.5 ลำดับ Build
+
+**รอบ 0 — เคลียร์หนี้ Phase 1 (§9)**
+- แก้ booking race (unique constraint หรือ `Serializable`) — จำเป็นก่อนทำคิว real-time
+- ปิดช่อง `/scanned/:id` (signed token ใน QR)
+
+**รอบ 1 — ของมีเกือบครบ เห็นผลเร็ว (เหมาะโชว์)**
+1. ข้อ 6 check-in — เพิ่ม endpoint เปลี่ยน status + ผูก QR scan เดิม
+2. ข้อ 9 announcements — FE มี `Announcement` component แล้ว เหลือ backend
+3. ข้อ 2 suggest-slots — ข้อมูล booked/capacity มีครบ เหลือ logic + badge
+
+**รอบ 2 — foundation ที่ปลดล็อกเยอะสุด**
+4. ฐานร่วม **N** Notification service → ต่อทันทีข้อ 3, 13
+5. ฐานร่วม **R** Real-time queue → ข้อ 7, 8
+
+**รอบ 3 — ฟีเจอร์ที่ต้อง model ใหม่**
+6. ฐานร่วม **A** Caregiver → ข้อ 1, 10
+7. ฐานร่วม **S** Storage/Records → ข้อ 15, 11 (AI), 14 (share, ต้อง A)
+8. ข้อ 12 เตือนกินยา (ต้อง N + records)
+
+## 2.6 ความเสี่ยง / ข้อควรพิจารณาใหม่
+
+- **RLS เป็นเงื่อนไขบังคับ** ทันทีที่เปิด Realtime/Storage — ปัจจุบันตารางยังไม่มี policy (§4.4) ถ้าเปิดโดยไม่เขียน policy = ใครมี anon key อ่าน `users`/`medical_records` ได้ทั้งตาราง
+- **LINE push มีโควตา** — บัญชีฟรีจำกัดจำนวนข้อความ/เดือน ต้องคุม + fallback เป็น in-app notification
+- **ค่า LLM (ข้อ 11)** — แปลผลรักษาควร cache (`summaryPlain`) เรียกครั้งเดียวต่อ record; เลือก `claude-haiku-4-5` ถ้าเน้นถูก/เร็ว
+- **PDPA (ข้อ 14, ผลรักษาเป็นข้อมูลอ่อนไหว)** — การแชร์ต้องมี consent ชัดเจน + audit log ว่าใครเข้าถึงเมื่อไร
+- **เช็คสิทธิจริง (ข้อ 4)** ต้องต่อ API สปสช./NHSO ซึ่งเป็นระบบภายนอก — MVP อาจให้ผู้ใช้กรอกสิทธิเองก่อน แล้วเทียบกับ `Hospital.rightsAccepted`
