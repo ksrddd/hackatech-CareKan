@@ -1,6 +1,6 @@
+import 'dotenv/config';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { PrismaClient, type InsuranceRight, type ServiceType } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { zoneForDistrict } from '../data/bangkok-zones.js';
@@ -21,7 +21,7 @@ interface GovHospitalRaw {
   sector: 'government';
 }
 
-const SEED_DIR = path.dirname(fileURLToPath(import.meta.url));
+const SEED_DIR = __dirname;
 
 function loadGovHospitals(): GovHospitalRaw[] {
   try {

@@ -1,12 +1,16 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { createHash, randomBytes } from 'node:crypto';
+import type { INestApplication } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
-import { makeTestApp, resetDb } from './helpers.js';
+import { resetDb } from './helpers.js';
+import { makeNestApp } from './nest-helpers.js';
 import { runSeed } from '../../prisma/seed.js';
 
 const prisma = new PrismaClient();
-const app = makeTestApp();
+let nestApp: INestApplication;
+let app: ReturnType<INestApplication['getHttpServer']>;
+afterAll(async () => { await nestApp.close(); });
 
 const KEY_PREFIX = 'ck_live_';
 function makeKey() {
@@ -33,6 +37,8 @@ let patientNationalId: string;
 beforeAll(async () => {
   await resetDb(prisma);
   await runSeed(prisma);
+  nestApp = await makeNestApp();
+  app = nestApp.getHttpServer();
 
   const hosp = await prisma.hospital.findFirst({ where: { id: 'klang' } });
   hospitalId = hosp!.id;

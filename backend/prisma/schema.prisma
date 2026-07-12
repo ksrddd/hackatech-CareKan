@@ -3,8 +3,10 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Supabase: migrate ต้องต่อผ่าน session-mode pooler (5432) — transaction-mode (6543) ไม่รองรับ
+  directUrl = env("DIRECT_URL")
 }
 
 enum InsuranceRight {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toUserDto, toTimeSlotDto } from '../services/mappers.js';
+import { toUserDto, toTimeSlotDto } from '../mappers/mappers.js';
 
 describe('mappers', () => {
   it('maps a user row to the User DTO (camelCase, fullName joined)', () => {

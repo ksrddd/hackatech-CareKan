@@ -1,13 +1,22 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
+import type { INestApplication } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
-import { makeTestApp, resetDb } from './helpers.js';
+import { resetDb } from './helpers.js';
+import { makeNestApp } from './nest-helpers.js';
 import { runSeed } from '../../prisma/seed.js';
 
 const prisma = new PrismaClient();
-const app = makeTestApp();
+let nestApp: INestApplication;
+let app: ReturnType<INestApplication['getHttpServer']>;
 
-beforeAll(async () => { await resetDb(prisma); await runSeed(prisma); });
+beforeAll(async () => {
+  await resetDb(prisma);
+  await runSeed(prisma);
+  nestApp = await makeNestApp();
+  app = nestApp.getHttpServer();
+});
+afterAll(async () => { await nestApp.close(); });
 
 describe('auth', () => {
   it('logs in the demo citizen and returns a User (no password)', async () => {

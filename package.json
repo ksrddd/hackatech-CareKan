@@ -1,0 +1,12 @@
+{
+  "name": "carekan",
+  "private": true,
+  "description": "Root manifest so Railway/Nixpacks detects Node and builds the backend in this monorepo (backend imports ../shared, so the build context must be the repo root).",
+  "engines": {
+    "node": "20.x"
+  },
+  "scripts": {
+    "build": "cd backend && npm ci --include=dev && npm run build",
+    "start": "cd backend && npx prisma migrate deploy && node dist/backend/src/main.js"
+  }
+}

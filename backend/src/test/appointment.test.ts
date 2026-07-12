@@ -1,11 +1,14 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
+import type { INestApplication } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
-import { makeTestApp, resetDb } from './helpers.js';
+import { resetDb } from './helpers.js';
+import { makeNestApp } from './nest-helpers.js';
 import { runSeed } from '../../prisma/seed.js';
 
 const prisma = new PrismaClient();
-const app = makeTestApp();
+let nestApp: INestApplication;
+let app: ReturnType<INestApplication['getHttpServer']>;
 let token: string;
 let openSlotId: string;
 let openSlotDate: string;
@@ -17,9 +20,13 @@ function nextDateForDayOfWeek(dayOfWeek: number, daysAhead = 1): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+afterAll(async () => { await nestApp.close(); });
+
 beforeAll(async () => {
   await resetDb(prisma);
   await runSeed(prisma);
+  nestApp = await makeNestApp();
+  app = nestApp.getHttpServer();
   const login = await request(app).post('/api/auth/login')
     .send({ nationalId: '1234567890123', password: 'care1234' });
   token = login.body.token;
